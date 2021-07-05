@@ -1,6 +1,9 @@
-# ClipSync
+# PasteSimple
 
 A Common Clipboard tool between Windows and Android.
+
+A new "Pasteasy"
+
 ```
 do Ctrl+C in windows
 
@@ -12,7 +15,7 @@ Paste in Android
 > Will work perfect with lower versions of Android OS than 10
 > [Android 10 Policy Change](https://developer.android.com/about/versions/10/privacy/changes#clipboard-data)
 
-## Getting Started with ClipSync Android Application Development
+## Getting Started with PasteSimple Android Application Development
 
 These instructions will get you a copy of the android project up and running on your local machine for development and testing purposes.
 
@@ -22,19 +25,19 @@ What things you need to install the software and how to install them
 
 * [JDK 10](http://www.oracle.com/technetwork/java/javase/downloads/jdk10-downloads-4416644.html)
 * [Android Studio](https://developer.android.com/studio/)
-* [Visual Studio Code](https://code.visualstudio.com/) (Recommended)
 
 ## Built With
 
 * [Android Java](http://www.oracle.com/technetwork/java/javase/downloads/jdk10-downloads-4416644.html)
 
-### ClipSync Repositories
+### PasteSimple Repositories
 
-* [clipsync-windows](https://github.com/pishangujeniya/clipsync-windows)
-* [clipsync-android](https://github.com/pishangujeniya/clipsync-android)
+* [paste-simple](https://github.com/QZLin/paste-simple)
+* [paste-simple-android](https://github.com/QZLin/paste-simple-android)
 
 ## Acknowledgments
 
+#### ClipSync
 * Thanks to all the contributors who invested their precious time into this.
 * Hat tip to anyone whose code was used.
 * Inspiration
