@@ -26,6 +26,8 @@ import com.pishangujeniya.clipsync.GlobalValues;
 import com.pishangujeniya.clipsync.R;
 import com.pishangujeniya.clipsync.helper.Utility;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.UUID;
 
 import microsoft.aspnet.signalr.client.Action;
@@ -232,6 +234,11 @@ public class SignalRService extends Service {
                 ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
 
                 String received_text = eventParameters[0].toString();
+                try {
+                    received_text = URLDecoder.decode(received_text, "utf-8");
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
                 if (received_text.length() > 2) {
                     received_text = received_text.substring(1, received_text.length() - 1);
                 }

@@ -37,6 +37,8 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -167,10 +169,20 @@ public class ClipBoardMonitor extends Service {
                         //since the clipboard contains plain text.
                         ClipData clip = mClipboardManager.getPrimaryClip();
                         String copied_content = clip.getItemAt(0).getText().toString();
+
                         if (!copied_content.equals(GlobalValues.lastSetText) || !GlobalValues.waitCopyLoop) {
                             Log.i("test", "clip:" + copied_content);//TODO watermark
-                            if (mService != null)
-                                mService.sendCopiedText(copied_content);
+                            if (mService != null) {
+                                String encoded;
+                                try {
+                                    encoded = URLEncoder.encode(copied_content, "utf-8").replace("+", "%20");
+                                } catch (UnsupportedEncodingException e) {
+                                    encoded = copied_content;
+                                    Log.e("test", e.toString());
+                                }
+                                mService.sendCopiedText(encoded);
+                            }
+
                         } else {
                             GlobalValues.waitCopyLoop = false;
                         }
