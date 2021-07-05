@@ -2,8 +2,11 @@ package com.pishangujeniya.clipsync;
 
 import android.app.ActivityManager;
 import android.content.Intent;
+
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
 import androidx.appcompat.app.AppCompatActivity;
+
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;

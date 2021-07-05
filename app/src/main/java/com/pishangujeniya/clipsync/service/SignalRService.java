@@ -12,11 +12,12 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Binder;
-import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+
 import androidx.core.app.NotificationCompat;
+
 import android.util.Log;
 
 import com.google.gson.JsonElement;
@@ -189,6 +190,7 @@ public class SignalRService extends Service {
         if (is_service_connected) {
             Log.e(TAG, "Sending Copied Text to SignalR");
             mHubProxy.invoke(GlobalValues.send_copied_text_signalr_method_name, text);
+            Log.i("test", "send:" + text);
         } else {
             Log.e(TAG, "Service is not connected so not sending copied text");
         }
@@ -220,7 +222,7 @@ public class SignalRService extends Service {
                     return;
                 }
 
-                System.out.println("Received Copied Text : " + eventParameters[0]);
+////                System.out.println("Received Copied Text : " + eventParameters[0]);
 
 //                HandlerThread uiThread = new HandlerThread("UIHandler");
                 if (!looperThreadCreated) {
@@ -233,11 +235,21 @@ public class SignalRService extends Service {
                 if (received_text.length() > 2) {
                     received_text = received_text.substring(1, received_text.length() - 1);
                 }
-                if (!received_text.contains(GlobalValues.copied_water_mark) && !utility.getLastClipboardText().equalsIgnoreCase(received_text)) {
-                    ClipData clip = ClipData.newPlainText(String.valueOf(System.currentTimeMillis()), received_text + GlobalValues.copied_water_mark);
+                assert clipboard != null;
+                ClipData clip = ClipData.newPlainText(String.valueOf(System.currentTimeMillis()), received_text);
+                Log.i("test", "set:" + received_text);
+                GlobalValues.lastSetText = received_text;
+                GlobalValues.waitCopyLoop = true;
+                clipboard.setPrimaryClip(clip);
+
+                //!received_text.contains(GlobalValues.copied_water_mark) &&
+                //TODO watermark
+                /*if (!utility.getLastClipboardText().equalsIgnoreCase(received_text)) {
+                    ClipData clip = ClipData.newPlainText(String.valueOf(System.currentTimeMillis()), received_text*//* + GlobalValues.copied_water_mark*//*);
                     assert clipboard != null;
                     clipboard.setPrimaryClip(clip);
-                }
+                    Log.i("test", "set:" + clip.toString());
+                }*/
 
             }
         });

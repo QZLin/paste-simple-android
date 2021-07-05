@@ -143,38 +143,49 @@ public class ClipBoardMonitor extends Service {
 //                    mThreadPool.execute(new WriteHistoryRunnable(
 //                            clip.getItemAt(0).getText()));
                     if (!(mClipboardManager.hasPrimaryClip())) {
-                        Log.e(TAG,"no Primary Clip");
+                        Log.e(TAG, "no Primary Clip");
                     } else if (!(mClipboardManager.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN))) {
-
+                        assert true;
+/*
                         // since the clipboard has data but it is not plain text
                         //since the clipboard contains plain text.
                         ClipData clip = mClipboardManager.getPrimaryClip();
                         String copied_content = clip.getItemAt(0).getText().toString();
-                        Log.e(TAG,"Content at 0 "+copied_content);
-                        if(copied_content.contains(GlobalValues.copied_water_mark)){
+                        Log.i("test", "clip:" + copied_content);
+//                        Log.e(TAG,"Content at 0 "+copied_content);
+                        if (copied_content.contains(GlobalValues.copied_water_mark)) {
                             // Means Copied text already copied by ClipSync and came back again so don't send again
-                        }else{
+                        } else {
                             Log.e(TAG, "Copied Text : " + copied_content);
-                            if(mService != null){
+                            if (mService != null) {
 //                            sendNotification(copied_content);
                                 mService.sendCopiedText(copied_content);
                             }
-                        }
+                        }*/
                     } else {
 
                         //since the clipboard contains plain text.
                         ClipData clip = mClipboardManager.getPrimaryClip();
                         String copied_content = clip.getItemAt(0).getText().toString();
-                        Log.e(TAG,"Content at 0 "+copied_content);
-                        if(copied_content.contains(GlobalValues.copied_water_mark)){
-                            // Means Copied text already copied by ClipSync and came back again so don't send again
-                        }else{
-                            Log.e(TAG, "Copied Text : " + copied_content);
-                            if(mService != null){
-//                            sendNotification(copied_content);
-                            mService.sendCopiedText(copied_content);
-                            }
+                        if (!copied_content.equals(GlobalValues.lastSetText) || !GlobalValues.waitCopyLoop) {
+                            Log.i("test", "clip:" + copied_content);//TODO watermark
+                            if (mService != null)
+                                mService.sendCopiedText(copied_content);
+                        } else {
+                            GlobalValues.waitCopyLoop = false;
                         }
+
+
+//                        Log.e(TAG, "Content at 0 " + copied_content);
+                       /* if (copied_content.contains(GlobalValues.copied_water_mark)) {
+                            // Means Copied text already copied by ClipSync and came back again so don't send again
+                        } else {
+                            Log.e(TAG, "Copied Text : " + copied_content);
+                            if (mService != null) {
+//                            sendNotification(copied_content);
+                                mService.sendCopiedText(copied_content);
+                            }
+                        }*/
 
                     }
 

@@ -1,17 +1,31 @@
-package com.pishangujeniya.clipsync;
+package com.pishangujeniya.clipsync
 
- public class  GlobalValues {
+object GlobalValues {
+    @JvmField
+    var SignalHubName = "SignalRHub"
 
-     public static String SignalHubName = "SignalRHub";
-     public static String receive_copied_text_signalr_method_name = "ReceiveCopiedText";
-     public static String send_copied_text_signalr_method_name = "SendCopiedText";
-     public static String copied_water_mark = "- Copied By ClipSync";
+    @JvmField
+    var receive_copied_text_signalr_method_name = "ReceiveCopiedText"
 
-     public static String STOP_SERVICE = "STOP_SERVICE";
-     public static String START_SERVICE = "START_SERVICE";
+    @JvmField
+    var send_copied_text_signalr_method_name = "SendCopiedText"
 
-     public static int SIGNALR_SERVICE_NOTIFICATION_ID = 1001;
+    @JvmField
+    var copied_water_mark = "- Copied By ClipSync"
+
+    @JvmField
+    var STOP_SERVICE = "STOP_SERVICE"
+
+    @JvmField
+    var START_SERVICE = "START_SERVICE"
+
+    @JvmField
+    var SIGNALR_SERVICE_NOTIFICATION_ID = 1001
 
 
+    @JvmField
+    var lastSetText = ""
 
+    @JvmField
+    var waitCopyLoop = false
 }
