@@ -35,13 +35,15 @@ import java.util.concurrent.Executors
  * Monitors the [ClipboardManager] for changes and logs the text to a file.
  */
 class ClipBoardMonitor : Service() {
-    private var utility: Utility? = null
-    private var mHistoryFile: File? = null
+    private lateinit var utility: Utility
+    private lateinit var mHistoryFile: File
+    private lateinit var mClipboardManager: ClipboardManager
+
     private val mThreadPool = Executors.newSingleThreadExecutor()
-    private var mClipboardManager: ClipboardManager? = null
     private var mBound = false
+
     private var mService: SignalRService? = null
-    private val mConnection: ServiceConnection? = object : ServiceConnection {
+    private val mConnection: ServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName?, service: IBinder?) {
             Log.e(TAG, "Inside service connected - Activity ")
             // We've bound to SignalRService, cast the IBinder and get SignalRService instance
@@ -65,26 +67,26 @@ class ClipBoardMonitor : Service() {
         utility = Utility(applicationContext)
         mHistoryFile = File(getExternalFilesDir(null), FILENAME)
         mClipboardManager = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-        mClipboardManager!!.addPrimaryClipChangedListener(
+        mClipboardManager.addPrimaryClipChangedListener(
             mOnPrimaryClipChangedListener
         )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val mIntent = Intent(this, SignalRService::class.java)
-        bindService(mIntent, mConnection!!, BIND_AUTO_CREATE)
+        bindService(mIntent, mConnection, BIND_AUTO_CREATE)
         return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        mClipboardManager?.removePrimaryClipChangedListener(
+        mClipboardManager.removePrimaryClipChangedListener(
             mOnPrimaryClipChangedListener
         )
 
         // Unbind from the service
         if (mBound) {
-            unbindService(mConnection!!)
+            unbindService(mConnection)
             mBound = false
             Log.e(TAG, "bound disconnecting - status - $mBound")
         }
@@ -102,14 +104,14 @@ class ClipBoardMonitor : Service() {
         return Environment.MEDIA_MOUNTED == state
     }
 
-    private val mOnPrimaryClipChangedListener: OnPrimaryClipChangedListener? =
+    private val mOnPrimaryClipChangedListener: OnPrimaryClipChangedListener =
         OnPrimaryClipChangedListener {
             Log.d(TAG, "onPrimaryClipChanged")
             //                    mThreadPool.execute(new WriteHistoryRunnable(
 //                            clip.getItemAt(0).getText()));
-            if (!mClipboardManager?.hasPrimaryClip()!!) {
+            if (!mClipboardManager.hasPrimaryClip()) {
                 Log.e(TAG, "no Primary Clip")
-            } else if (!mClipboardManager?.getPrimaryClipDescription()
+            } else if (!mClipboardManager.primaryClipDescription
                     ?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)!!
             ) {
                 assert(true)
@@ -132,7 +134,7 @@ class ClipBoardMonitor : Service() {
             } else {
 
                 //since the clipboard contains plain text.
-                val clip = mClipboardManager!!.getPrimaryClip()
+                val clip = mClipboardManager.getPrimaryClip()
                 val copied_content = clip?.getItemAt(0)?.text.toString()
                 if (copied_content != GlobalValues.lastSetText || !GlobalValues.waitCopyLoop) {
                     Log.i("test", "clip:$copied_content") //TODO watermark
@@ -185,7 +187,7 @@ class ClipBoardMonitor : Service() {
                     Log.w(
                         TAG, String.format(
                             "Failed to open file %s for writing!",
-                            mHistoryFile!!.absoluteFile
+                            mHistoryFile.absoluteFile
                         )
                     )
                 }
@@ -202,7 +204,7 @@ class ClipBoardMonitor : Service() {
 
     companion object {
         private val TAG = ClipBoardMonitor::class.java.simpleName
-        private val FILENAME: String? = "clipboard-history.txt"
+        private val FILENAME: String = "clipboard-history.txt"
         private const val NOTIFICATION_ID = 777
     }
 }
