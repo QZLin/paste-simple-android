@@ -1,0 +1,64 @@
+apply plugin: 'com.android.application'
+
+android {
+    splits {
+        abi {
+            enable true
+            reset()
+//            include 'x86', 'x86_64', 'armeabi', 'armeabi-v7a', 'mips', 'mips64', 'arm64-v8a'
+//            include 'armeabi-v7a'
+            universalApk false
+        }
+    }
+    compileSdkVersion 30
+    defaultConfig {
+        applicationId "com.pishangujeniya.clipsync"
+        minSdkVersion 23
+        targetSdkVersion 30
+        versionCode 20
+        versionName "2.0"
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        multiDexEnabled true
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    packagingOptions {
+        exclude 'lib/getLibs.ps1'
+        exclude 'lib/getLibs.sh'
+        exclude 'lib/gson-2.8.2.jar'
+    }
+    buildToolsVersion '29.0.3'
+}
+repositories {
+    mavenCentral()
+    google()
+    jcenter()
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
+    implementation 'com.google.android.material:material:1.2.1'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    //Glide
+    implementation 'com.github.bumptech.glide:glide:4.11.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.11.0'
+
+    //Permissions
+    implementation 'pub.devrel:easypermissions:3.0.0'
+    // NETWORKING
+    implementation 'com.android.volley:volley:1.1.1'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.2'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+    // SignalR Library
+    //    implementation files('libs/gson-2.2.2.jar')
+    implementation 'com.google.code.gson:gson:2.8.6'
+    implementation files('libs/signalr-client-sdk-android.jar')
+    implementation files('libs/signalr-client-sdk.jar')
+}
