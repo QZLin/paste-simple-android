@@ -14,8 +14,8 @@ class Utility(var context: Context?) {
     private val USER: String? = "USER"
     fun getPermissions(): Array<String?>? {
         return arrayOf(
-                Manifest.permission.INTERNET,
-                Manifest.permission.ACCESS_NETWORK_STATE
+            Manifest.permission.INTERNET,
+            Manifest.permission.ACCESS_NETWORK_STATE
         )
     }
 
@@ -88,9 +88,12 @@ class Utility(var context: Context?) {
     }
 
     fun getLastClipboardText(): String? {
-        val mClipboardManager = (context?.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)!!
+        val mClipboardManager =
+            (context?.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)!!
         if (!mClipboardManager.hasPrimaryClip()) {
-        } else if (!Objects.requireNonNull(mClipboardManager.primaryClipDescription)?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)!!) {
+        } else if (!Objects.requireNonNull(mClipboardManager.primaryClipDescription)
+                ?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)!!
+        ) {
 
             // since the clipboard has data but it is not plain text
             //since the clipboard contains plain text.

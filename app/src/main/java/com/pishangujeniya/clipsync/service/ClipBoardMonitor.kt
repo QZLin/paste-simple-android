@@ -66,7 +66,8 @@ class ClipBoardMonitor : Service() {
         mHistoryFile = File(getExternalFilesDir(null), FILENAME)
         mClipboardManager = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         mClipboardManager!!.addPrimaryClipChangedListener(
-                mOnPrimaryClipChangedListener)
+            mOnPrimaryClipChangedListener
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -78,7 +79,8 @@ class ClipBoardMonitor : Service() {
     override fun onDestroy() {
         super.onDestroy()
         mClipboardManager?.removePrimaryClipChangedListener(
-                mOnPrimaryClipChangedListener)
+            mOnPrimaryClipChangedListener
+        )
 
         // Unbind from the service
         if (mBound) {
@@ -100,64 +102,67 @@ class ClipBoardMonitor : Service() {
         return Environment.MEDIA_MOUNTED == state
     }
 
-    private val mOnPrimaryClipChangedListener: OnPrimaryClipChangedListener? = OnPrimaryClipChangedListener {
-        Log.d(TAG, "onPrimaryClipChanged")
-        //                    mThreadPool.execute(new WriteHistoryRunnable(
+    private val mOnPrimaryClipChangedListener: OnPrimaryClipChangedListener? =
+        OnPrimaryClipChangedListener {
+            Log.d(TAG, "onPrimaryClipChanged")
+            //                    mThreadPool.execute(new WriteHistoryRunnable(
 //                            clip.getItemAt(0).getText()));
-        if (!mClipboardManager?.hasPrimaryClip()!!) {
-            Log.e(TAG, "no Primary Clip")
-        } else if (!mClipboardManager?.getPrimaryClipDescription()?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)!!) {
-            assert(true)
-            /*
-                    // since the clipboard has data but it is not plain text
-                    //since the clipboard contains plain text.
-                    ClipData clip = mClipboardManager.getPrimaryClip();
-                    String copied_content = clip.getItemAt(0).getText().toString();
-                    Log.i("test", "clip:" + copied_content);
-//                        Log.e(TAG,"Content at 0 "+copied_content);
-                    if (copied_content.contains(GlobalValues.copied_water_mark)) {
-                        // Means Copied text already copied by ClipSync and came back again so don't send again
-                    } else {
-                        Log.e(TAG, "Copied Text : " + copied_content);
-                        if (mService != null) {
-//                            sendNotification(copied_content);
-                            mService.sendCopiedText(copied_content);
-                        }
-                    }*/
-        } else {
-
-            //since the clipboard contains plain text.
-            val clip = mClipboardManager!!.getPrimaryClip()
-            val copied_content = clip?.getItemAt(0)?.text.toString()
-            if (copied_content != GlobalValues.lastSetText || !GlobalValues.waitCopyLoop) {
-                Log.i("test", "clip:$copied_content") //TODO watermark
-                if (mService != null) {
-                    var encoded: String
-                    try {
-                        encoded = URLEncoder.encode(copied_content, "utf-8").replace("+", "%20")
-                    } catch (e: UnsupportedEncodingException) {
-                        encoded = copied_content
-                        Log.e("test", e.toString())
-                    }
-                    mService!!.sendCopiedText(encoded)
-                }
+            if (!mClipboardManager?.hasPrimaryClip()!!) {
+                Log.e(TAG, "no Primary Clip")
+            } else if (!mClipboardManager?.getPrimaryClipDescription()
+                    ?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)!!
+            ) {
+                assert(true)
+                /*
+                        // since the clipboard has data but it is not plain text
+                        //since the clipboard contains plain text.
+                        ClipData clip = mClipboardManager.getPrimaryClip();
+                        String copied_content = clip.getItemAt(0).getText().toString();
+                        Log.i("test", "clip:" + copied_content);
+    //                        Log.e(TAG,"Content at 0 "+copied_content);
+                        if (copied_content.contains(GlobalValues.copied_water_mark)) {
+                            // Means Copied text already copied by ClipSync and came back again so don't send again
+                        } else {
+                            Log.e(TAG, "Copied Text : " + copied_content);
+                            if (mService != null) {
+    //                            sendNotification(copied_content);
+                                mService.sendCopiedText(copied_content);
+                            }
+                        }*/
             } else {
-                GlobalValues.waitCopyLoop = false
-            }
+
+                //since the clipboard contains plain text.
+                val clip = mClipboardManager!!.getPrimaryClip()
+                val copied_content = clip?.getItemAt(0)?.text.toString()
+                if (copied_content != GlobalValues.lastSetText || !GlobalValues.waitCopyLoop) {
+                    Log.i("test", "clip:$copied_content") //TODO watermark
+                    if (mService != null) {
+                        var encoded: String
+                        try {
+                            encoded = URLEncoder.encode(copied_content, "utf-8").replace("+", "%20")
+                        } catch (e: UnsupportedEncodingException) {
+                            encoded = copied_content
+                            Log.e("test", e.toString())
+                        }
+                        mService!!.sendCopiedText(encoded)
+                    }
+                } else {
+                    GlobalValues.waitCopyLoop = false
+                }
 
 
 //                        Log.e(TAG, "Content at 0 " + copied_content);
-            /* if (copied_content.contains(GlobalValues.copied_water_mark)) {
-                        // Means Copied text already copied by ClipSync and came back again so don't send again
-                    } else {
-                        Log.e(TAG, "Copied Text : " + copied_content);
-                        if (mService != null) {
-//                            sendNotification(copied_content);
-                            mService.sendCopiedText(copied_content);
-                        }
-                    }*/
+                /* if (copied_content.contains(GlobalValues.copied_water_mark)) {
+                            // Means Copied text already copied by ClipSync and came back again so don't send again
+                        } else {
+                            Log.e(TAG, "Copied Text : " + copied_content);
+                            if (mService != null) {
+    //                            sendNotification(copied_content);
+                                mService.sendCopiedText(copied_content);
+                            }
+                        }*/
+            }
         }
-    }
 
     private inner class WriteHistoryRunnable(text: CharSequence?) : Runnable {
         private val mNow: Date?
@@ -177,8 +182,12 @@ class ClipBoardMonitor : Service() {
                     writer.newLine()
                     writer.close()
                 } catch (e: IOException) {
-                    Log.w(TAG, String.format("Failed to open file %s for writing!",
-                            mHistoryFile!!.absoluteFile))
+                    Log.w(
+                        TAG, String.format(
+                            "Failed to open file %s for writing!",
+                            mHistoryFile!!.absoluteFile
+                        )
+                    )
                 }
             } else {
                 Log.w(TAG, "External storage is not writable!")

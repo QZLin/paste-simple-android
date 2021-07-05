@@ -25,11 +25,14 @@ class SignalRService : Service() {
     private var mHubProxy: HubProxy? = null
     private var mHandler // to display Toast message
             : Handler? = null
+
     private val mBinder: LocalBinder = LocalBinder()
     var is_service_connected: Boolean = false
+
     private lateinit var context: Context
     private lateinit var mNotificationManager: NotificationManager
-    private var notification: Notification? = null
+    private lateinit var notification: Notification
+
     private val CHANNEL_ID: String = "ClipSyncServer" // The id of the channel.
     private val name: CharSequence = "ClipSyncServer" // The user-visible name of the channel.
     private val NOTIFICATION_TITLE: String = "ClipSync Working"
@@ -56,7 +59,7 @@ class SignalRService : Service() {
             Log.d(TAG, "called to cancel service")
             stopForeground(true)
             stopSelf()
-            mNotificationManager!!.cancel(GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID)
+            mNotificationManager.cancel(GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID)
         } else if (GlobalValues.START_SERVICE == intent.getAction()) {
             showNotification()
             startSignalR()
@@ -65,19 +68,14 @@ class SignalRService : Service() {
     }
 
     override fun onDestroy() {
-        if (conn != null) {
-            try {
-                val state = conn!!.getState()
-                if (state.compareTo(ConnectionState.Connected) > -1) {
-                    conn!!.stop()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
+        try {
+            if (conn.state.compareTo(ConnectionState.Connected) > -1) {
+                conn.stop()
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        if (mNotificationManager != null) {
-            mNotificationManager!!.cancel(GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID)
-        }
+        mNotificationManager.cancel(GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID)
         super.onDestroy()
     }
 
@@ -86,7 +84,7 @@ class SignalRService : Service() {
         return super.onUnbind(intent)
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
+    override fun onBind(intent: Intent?): IBinder {
         // Return the communication channel to the service.
         Log.d("service", "onBind  - service")
         //        startSignalR();
@@ -98,7 +96,7 @@ class SignalRService : Service() {
      * runs in the same process as its clients, we don't need to deal with IPC.
      */
     inner class LocalBinder : Binder() {
-        fun getService(): SignalRService? {
+        fun getService(): SignalRService {
             // Return this instance of SignalRService so clients can call public methods
             return this@SignalRService
         }
@@ -108,29 +106,38 @@ class SignalRService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val importance = NotificationManager.IMPORTANCE_HIGH
             mChannel = NotificationChannel(CHANNEL_ID, name, importance)
-            mNotificationManager!!.createNotificationChannel(mChannel!!)
+            mNotificationManager.createNotificationChannel(mChannel!!)
         }
         val notificationIntent = Intent(this, ControlsActivity::class.java)
         notificationIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        pendingIntent = PendingIntent.getActivity(this, 0,
-                notificationIntent, 0)
-        icon = BitmapFactory.decodeResource(resources,
-                R.drawable.clip_sync_logo_2)
+        pendingIntent = PendingIntent.getActivity(
+            this, 0,
+            notificationIntent, 0
+        )
+        icon = BitmapFactory.decodeResource(
+            resources,
+            R.drawable.clip_sync_logo_2
+        )
         val stop_self_intent = Intent(this@SignalRService, SignalRService::class.java)
         stop_self_intent.action = GlobalValues.STOP_SERVICE
-        pStopSelf = PendingIntent.getService(context, GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID, stop_self_intent, PendingIntent.FLAG_CANCEL_CURRENT)
+        pStopSelf = PendingIntent.getService(
+            context,
+            GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID,
+            stop_self_intent,
+            PendingIntent.FLAG_CANCEL_CURRENT
+        )
         notification = NotificationCompat.Builder(this)
-                .setContentTitle(NOTIFICATION_TITLE)
-                .setTicker(NOTIFICATION_TITLE)
-                .setContentText(NOTIFICATION_CONTENT_TEXT)
-                .setSmallIcon(R.drawable.clip_sync_logo_2)
-                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
-                .setContentIntent(pendingIntent)
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-                .setChannelId(CHANNEL_ID)
-                .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
-                .build()
+            .setContentTitle(NOTIFICATION_TITLE)
+            .setTicker(NOTIFICATION_TITLE)
+            .setContentText(NOTIFICATION_CONTENT_TEXT)
+            .setSmallIcon(R.drawable.clip_sync_logo_2)
+            .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setChannelId(CHANNEL_ID)
+            .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
+            .build()
         startForeground(GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID, notification)
     }
 
@@ -148,12 +155,14 @@ class SignalRService : Service() {
         // Create a new console logger
         val logger = Logger { message, level -> Log.d("SignalR : ", message) }
         // Connect to the server
-        val parameters = "&uid=" + utility.getUid() + "&platform=ANDROID" + "&device_id=" + UUID.randomUUID().toString()
+        val parameters =
+            "&uid=" + utility.getUid() + "&platform=ANDROID" + "&device_id=" + UUID.randomUUID()
+                .toString()
         val server_address = "http://" + utility.getServerAddress() + ":" + utility.getServerPort()
         conn = HubConnection(server_address, parameters, true, logger)
 
         // Create the hub proxy
-        val proxy = conn!!.createHubProxy(GlobalValues.SignalHubName)
+        val proxy = conn.createHubProxy(GlobalValues.SignalHubName)
         mHubProxy = proxy
         val subscription = proxy.subscribe(GlobalValues.receive_copied_text_signalr_method_name)
         subscription.addReceivedHandler(Action { eventParameters ->
@@ -178,7 +187,6 @@ class SignalRService : Service() {
             if (received_text.length > 2) {
                 received_text = received_text.substring(1, received_text.length - 1)
             }
-            assert(clipboard != null)
             val clip = ClipData.newPlainText(System.currentTimeMillis().toString(), received_text)
             Log.i("test", "set:$received_text")
             GlobalValues.lastSetText = received_text
@@ -217,61 +225,64 @@ class SignalRService : Service() {
         conn.connected(Runnable {
             println("Connecting...")
             is_service_connected = true
-            if (mNotificationManager != null && notification != null) {
-                notification = NotificationCompat.Builder(context)
-                        .setContentTitle(NOTIFICATION_TITLE)
-                        .setTicker(NOTIFICATION_TITLE)
-                        .setContentText("Connecting...")
-                        .setSmallIcon(R.drawable.clip_sync_logo_2)
-                        .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
-                        .setContentIntent(pendingIntent)
-                        .setOngoing(true)
-                        .setOnlyAlertOnce(true)
-                        .setChannelId(CHANNEL_ID)
-                        .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
-                        .build()
-                mNotificationManager.notify(GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID, notification)
-            }
+            notification = NotificationCompat.Builder(context)
+                .setContentTitle(NOTIFICATION_TITLE)
+                .setTicker(NOTIFICATION_TITLE)
+                .setContentText("Connecting...")
+                .setSmallIcon(R.drawable.clip_sync_logo_2)
+                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setChannelId(CHANNEL_ID)
+                .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
+                .build()
+            mNotificationManager.notify(
+                GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID,
+                notification
+            )
         })
 
         // Subscribe to the closed event
         conn.closed(Runnable {
             println("DISCONNECTED")
-            if (mNotificationManager != null && notification != null) {
-                notification = NotificationCompat.Builder(context)
-                        .setContentTitle(NOTIFICATION_TITLE)
-                        .setTicker(NOTIFICATION_TITLE)
-                        .setContentText("Disconnected")
-                        .setSmallIcon(R.drawable.clip_sync_logo_2)
-                        .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
-                        .setContentIntent(pendingIntent)
-                        .setAutoCancel(true)
-                        .setOnlyAlertOnce(true)
-                        .setChannelId(CHANNEL_ID)
-                        .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
-                        .build()
-                mNotificationManager.notify(GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID, notification)
-            }
+            notification = NotificationCompat.Builder(context)
+                .setContentTitle(NOTIFICATION_TITLE)
+                .setTicker(NOTIFICATION_TITLE)
+                .setContentText("Disconnected")
+                .setSmallIcon(R.drawable.clip_sync_logo_2)
+                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .setOnlyAlertOnce(true)
+                .setChannelId(CHANNEL_ID)
+                .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
+                .build()
+            mNotificationManager.notify(
+                GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID,
+                notification
+            )
         })
 
         // Start the connection
         conn.start().done {
             println("Connected")
-            if (mNotificationManager != null && notification != null) {
-                notification = NotificationCompat.Builder(context)
-                        .setContentTitle(NOTIFICATION_TITLE)
-                        .setTicker(NOTIFICATION_TITLE)
-                        .setContentText("Connected")
-                        .setSmallIcon(R.drawable.clip_sync_logo_2)
-                        .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
-                        .setContentIntent(pendingIntent)
-                        .setOngoing(true)
-                        .setOnlyAlertOnce(true)
-                        .setChannelId(CHANNEL_ID)
-                        .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
-                        .build()
-                mNotificationManager.notify(GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID, notification)
-            }
+            notification = NotificationCompat.Builder(context)
+                .setContentTitle(NOTIFICATION_TITLE)
+                .setTicker(NOTIFICATION_TITLE)
+                .setContentText("Connected")
+                .setSmallIcon(R.drawable.clip_sync_logo_2)
+                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setChannelId(CHANNEL_ID)
+                .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
+                .build()
+            mNotificationManager.notify(
+                GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID,
+                notification
+            )
         }
 
         // Subscribe to the received event

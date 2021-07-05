@@ -45,9 +45,16 @@ class ControlsActivity : AppCompatActivity() {
         stop_service_button = findViewById(R.id.activity_controls_service_stop_fab)
         logout_button = findViewById(R.id.activity_controls_log_out_fab)
         start_service_button.setOnClickListener(View.OnClickListener {
-            if (server_address_edit_text.getText() != null && server_address_edit_text.getText().toString().length > 0 && server_port_edit_text.getText() != null && server_port_edit_text.getText().toString().length > 1 && server_uid.getText() != null && server_uid.getText().toString().length > 1) {
-                utility!!.setServerAddress(server_address_edit_text.getText().toString().trim { it <= ' ' })
-                utility!!.setServerPort(server_port_edit_text.getText().toString().trim { it <= ' ' }.toInt())
+            if (server_address_edit_text.getText() != null && server_address_edit_text.getText()
+                    .toString().length > 0 && server_port_edit_text.getText() != null && server_port_edit_text.getText()
+                    .toString().length > 1 && server_uid.getText() != null && server_uid.getText()
+                    .toString().length > 1
+            ) {
+                utility!!.setServerAddress(
+                    server_address_edit_text.getText().toString().trim { it <= ' ' })
+                utility!!.setServerPort(
+                    server_port_edit_text.getText().toString().trim { it <= ' ' }.toInt()
+                )
                 utility!!.setUid(server_uid.getText().toString().trim { it <= ' ' }.toInt())
                 val signalRServiceIntent = Intent(this@ControlsActivity, SignalRService::class.java)
                 signalRServiceIntent.action = GlobalValues.START_SERVICE
