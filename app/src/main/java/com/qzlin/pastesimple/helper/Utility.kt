@@ -1,4 +1,4 @@
-package com.pishangujeniya.clipsync.helper
+package com.qzlin.pastesimple.helper
 
 import android.Manifest
 import android.content.ClipDescription

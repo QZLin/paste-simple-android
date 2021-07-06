@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.pishangujeniya.clipsync">
+    package="com.qzlin.pastesimple">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -22,17 +22,17 @@
         tools:replace="android:allowBackup">
 
         <service
-            android:name=".service.ClipBoardMonitor"
+            android:name="com.qzlin.pastesimple.service.ClipBoardMonitor"
             android:exported="false"
             android:label="Clipboard Monitor" />
         <service
-            android:name=".service.SignalRService"
+            android:name="com.qzlin.pastesimple.service.SignalRService"
             android:exported="false"
             android:label="ClipSync SignalR"
 
             />
 
-        <activity android:name=".ControlsActivity">
+        <activity android:name="com.qzlin.pastesimple.ControlsActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <!-- <category android:name="android.intent.category.DEFAULT" /> -->

@@ -1,4 +1,4 @@
-package com.pishangujeniya.clipsync
+package com.qzlin.pastesimple
 
 object GlobalValues {
     var SignalHubName = "SignalRHub"

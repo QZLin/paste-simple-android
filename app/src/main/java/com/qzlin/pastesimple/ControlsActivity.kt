@@ -1,4 +1,4 @@
-package com.pishangujeniya.clipsync
+package com.qzlin.pastesimple
 
 import android.app.ActivityManager
 import android.content.Intent
@@ -9,9 +9,9 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.pishangujeniya.clipsync.helper.Utility
-import com.pishangujeniya.clipsync.service.ClipBoardMonitor
-import com.pishangujeniya.clipsync.service.SignalRService
+import com.qzlin.pastesimple.helper.Utility
+import com.qzlin.pastesimple.service.ClipBoardMonitor
+import com.qzlin.pastesimple.service.SignalRService
 
 class ControlsActivity : AppCompatActivity() {
     private lateinit var start_service_button: FloatingActionButton

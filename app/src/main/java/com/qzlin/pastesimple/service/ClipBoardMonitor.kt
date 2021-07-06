@@ -1,4 +1,4 @@
-package com.pishangujeniya.clipsync.service
+package com.qzlin.pastesimple.service
 
 import android.app.Service
 import android.content.*
@@ -7,9 +7,9 @@ import android.os.Environment
 import android.os.IBinder
 import android.text.TextUtils
 import android.util.Log
-import com.pishangujeniya.clipsync.GlobalValues
-import com.pishangujeniya.clipsync.helper.Utility
-import com.pishangujeniya.clipsync.service.SignalRService.LocalBinder
+import com.qzlin.pastesimple.GlobalValues
+import com.qzlin.pastesimple.helper.Utility
+import com.qzlin.pastesimple.service.SignalRService.LocalBinder
 import java.io.*
 import java.net.URLEncoder
 import java.util.*

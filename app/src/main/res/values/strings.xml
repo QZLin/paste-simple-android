@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ClipSync</string>
+    <string name="app_name">PasteSimple</string>
     <string name="title_activity_login">LoginActivity</string>
     <string name="title_activity_sign_up">LoginActivity</string>
 

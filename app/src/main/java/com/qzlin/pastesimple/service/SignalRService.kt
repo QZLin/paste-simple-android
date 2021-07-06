@@ -1,4 +1,4 @@
-package com.pishangujeniya.clipsync.service
+package com.qzlin.pastesimple.service
 
 import android.app.*
 import android.content.*
@@ -7,11 +7,10 @@ import android.graphics.BitmapFactory
 import android.os.*
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.pishangujeniya.clipsync.ControlsActivity
-import com.pishangujeniya.clipsync.GlobalValues
-import com.pishangujeniya.clipsync.R
-import com.pishangujeniya.clipsync.helper.Utility
-import com.pishangujeniya.clipsync.service.SignalRService
+import com.qzlin.pastesimple.ControlsActivity
+import com.qzlin.pastesimple.GlobalValues
+import com.qzlin.pastesimple.R
+import com.qzlin.pastesimple.helper.Utility
 import microsoft.aspnet.signalr.client.*
 import microsoft.aspnet.signalr.client.hubs.HubConnection
 import microsoft.aspnet.signalr.client.hubs.HubProxy
