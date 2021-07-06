@@ -163,51 +163,47 @@ class SignalRService : Service() {
         val parameters =
             "&uid=" + utility.getUid() + "&platform=ANDROID" + "&device_id=" + UUID.randomUUID()
                 .toString()
-        val server_address = "http://" + utility.getServerAddress() + ":" + utility.getServerPort()
-        connection = HubConnection(server_address, parameters, true, logger)
+        val serverAddress = "http://" + utility.getServerAddress() + ":" + utility.getServerPort()
+        connection = HubConnection(serverAddress, parameters, true, logger)
 
         // Create the hub proxy
         val proxy = connection.createHubProxy(GlobalValues.SignalHubName)
         mHubProxy = proxy
+
         val subscription = proxy.subscribe(GlobalValues.receive_copied_text_signalr_method_name)
-        subscription.addReceivedHandler(Action { eventParameters ->
-            if (eventParameters == null || eventParameters.size <= 0) {
-                return@Action
-            }
+        subscription.addReceivedHandler(
+            Action { eventParameters ->
+                if (eventParameters == null || eventParameters.isEmpty()) {
+                    return@Action
+                }
 
-////                System.out.println("Received Copied Text : " + eventParameters[0]);
+                if (!looperThreadCreated) {
+                    Looper.prepare()
+                    looperThreadCreated = true
+                }
 
-//                HandlerThread uiThread = new HandlerThread("UIHandler");
-            if (!looperThreadCreated) {
-                Looper.prepare()
-                looperThreadCreated = true
-            }
-            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-            var received_text: String = eventParameters[0].toString()
-            try {
-                received_text = URLDecoder.decode(received_text, "utf-8")
-            } catch (e: UnsupportedEncodingException) {
-                e.printStackTrace()
-            }
-            if (received_text.length > 2) {
-                received_text = received_text.substring(1, received_text.length - 1)
-            }
-            val clip = ClipData.newPlainText(System.currentTimeMillis().toString(), received_text)
-            Log.i("test", "set:$received_text")
-            GlobalValues.lastSetText = received_text
-            GlobalValues.waitCopyLoop = true
-            clipboard.setPrimaryClip(clip)
+                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                var receivedText: String = eventParameters[0].toString()
+                try {
+                    receivedText = URLDecoder.decode(receivedText, "utf-8")
+                } catch (e: UnsupportedEncodingException) {
+                    e.printStackTrace()
+                }
 
-            //!received_text.contains(GlobalValues.copied_water_mark) &&
-            //TODO watermark
-            /*if (!utility.getLastClipboardText().equalsIgnoreCase(received_text)) {
-                    ClipData clip = ClipData.newPlainText(String.valueOf(System.currentTimeMillis()), received_text*/
-            /* + GlobalValues.copied_water_mark*/ /*);
-                    assert clipboard != null;
-                    clipboard.setPrimaryClip(clip);
-                    Log.i("test", "set:" + clip.toString());
-                }*/
-        })
+                if (receivedText.length > 2)
+                    receivedText =
+                        receivedText.substring(1, receivedText.length - 1)// handle ""text""
+
+                val clip =
+                    ClipData.newPlainText(System.currentTimeMillis().toString(), receivedText)
+                Log.i("test", "set:$receivedText")
+
+                GlobalValues.lastSetText = receivedText
+                GlobalValues.waitCopyLoop = true
+
+                clipboard.setPrimaryClip(clip)
+                //TODO watermark
+            })
 
 
         /*proxy.subscribe(new Object() {
