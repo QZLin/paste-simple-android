@@ -7,7 +7,7 @@ import android.graphics.BitmapFactory
 import android.os.*
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.qzlin.pastesimple.ControlsActivity
+import com.qzlin.pastesimple.MainActivity
 import com.qzlin.pastesimple.GlobalValues
 import com.qzlin.pastesimple.R
 import com.qzlin.pastesimple.helper.Utility
@@ -107,7 +107,7 @@ class SignalRService : Service() {
             mChannel = NotificationChannel(CHANNEL_ID, name, importance)
             mNotificationManager.createNotificationChannel(mChannel!!)
         }
-        val notificationIntent = Intent(this, ControlsActivity::class.java)
+        val notificationIntent = Intent(this, MainActivity::class.java)
         notificationIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         pendingIntent = PendingIntent.getActivity(
             this, 0,
@@ -222,7 +222,7 @@ class SignalRService : Service() {
 
         // Subscribe to the connected event
         conn.connected(Runnable {
-            println("Connecting...")
+//            println("Connecting...")
             is_service_connected = true
             notification = NotificationCompat.Builder(context)
                 .setContentTitle(NOTIFICATION_TITLE)
