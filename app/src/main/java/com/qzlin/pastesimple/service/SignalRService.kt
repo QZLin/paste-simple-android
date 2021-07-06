@@ -7,16 +7,18 @@ import android.graphics.BitmapFactory
 import android.os.*
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.qzlin.pastesimple.Global
 import com.qzlin.pastesimple.MainActivity
-import com.qzlin.pastesimple.GlobalValues
 import com.qzlin.pastesimple.R
 import com.qzlin.pastesimple.helper.Utility
 import microsoft.aspnet.signalr.client.*
 import microsoft.aspnet.signalr.client.hubs.HubConnection
 import microsoft.aspnet.signalr.client.hubs.HubProxy
 import java.io.UnsupportedEncodingException
+import java.net.URI
 import java.net.URLDecoder
 import java.util.*
+
 
 class SignalRService : Service() {
     private val tag = SignalRService::class.java.simpleName
@@ -60,12 +62,12 @@ class SignalRService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (GlobalValues.STOP_SERVICE == intent!!.action) {
+        if (Global.STOP_SERVICE == intent!!.action) {
 //            Log.d(tag, "called to cancel service")
             stopForeground(true)
             stopSelf()
-            mNotificationManager.cancel(GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID)
-        } else if (GlobalValues.START_SERVICE == intent.action) {
+            mNotificationManager.cancel(Global.SIGNALR_SERVICE_NOTIFICATION_ID)
+        } else if (Global.START_SERVICE == intent.action) {
             showNotification()
             startSignalR()
         }
@@ -80,7 +82,7 @@ class SignalRService : Service() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        mNotificationManager.cancel(GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID)
+        mNotificationManager.cancel(Global.SIGNALR_SERVICE_NOTIFICATION_ID)
         super.onDestroy()
     }
 
@@ -124,10 +126,10 @@ class SignalRService : Service() {
             R.drawable.clip_sync_logo_2
         )
         val stop_self_intent = Intent(this@SignalRService, SignalRService::class.java)
-        stop_self_intent.action = GlobalValues.STOP_SERVICE
+        stop_self_intent.action = Global.STOP_SERVICE
         pStopSelf = PendingIntent.getService(
             context,
-            GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID,
+            Global.SIGNALR_SERVICE_NOTIFICATION_ID,
             stop_self_intent,
             PendingIntent.FLAG_CANCEL_CURRENT
         )
@@ -143,16 +145,22 @@ class SignalRService : Service() {
             .setChannelId(CHANNEL_ID)
             .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
             .build()
-        startForeground(GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID, notification)
+        startForeground(Global.SIGNALR_SERVICE_NOTIFICATION_ID, notification)
     }
 
-    fun sendCopiedText(text: String?) {
+    private fun updateStatus(data: String) {
+        val intent = Intent()
+        intent.action = Global.STATUS_UPDATE_ACTION
+        intent.putExtra("text", data)
+        this.sendBroadcast(intent)
+    }
+
+    fun sendCopiedText(text: String) {
         if (is_service_connected) {
-            Log.e(tag, "Sending Copied Text to SignalR")
-            mHubProxy?.invoke(GlobalValues.send_copied_text_signalr_method_name, text)
+            mHubProxy?.invoke(Global.send_copied_text_signalr_method_name, text)
             Log.i("test", "send:$text")
         } else {
-            Log.e(tag, "Service is not connected so not sending copied text")
+            Log.e(tag, "Service not connected, send fail")
         }
     }
 
@@ -167,10 +175,10 @@ class SignalRService : Service() {
         connection = HubConnection(serverAddress, parameters, true, logger)
 
         // Create the hub proxy
-        val proxy = connection.createHubProxy(GlobalValues.SignalHubName)
+        val proxy = connection.createHubProxy(Global.SignalHubName)
         mHubProxy = proxy
 
-        val subscription = proxy.subscribe(GlobalValues.receive_copied_text_signalr_method_name)
+        val subscription = proxy.subscribe(Global.receive_copied_text_signalr_method_name)
         subscription.addReceivedHandler(
             Action { eventParameters ->
                 if (eventParameters == null || eventParameters.isEmpty()) {
@@ -191,15 +199,16 @@ class SignalRService : Service() {
                 }
 
                 if (receivedText.length > 2)
-                    receivedText =
-                        receivedText.substring(1, receivedText.length - 1)// handle ""text""
+                // handle ""text""
+                    receivedText = receivedText.substring(1, receivedText.length - 1)
 
-                val clip =
-                    ClipData.newPlainText(System.currentTimeMillis().toString(), receivedText)
+                val clip = ClipData.newPlainText(
+                    System.currentTimeMillis().toString(), receivedText
+                )
                 Log.i("test", "set:$receivedText")
 
-                GlobalValues.lastSetText = receivedText
-                GlobalValues.waitCopyLoop = true
+                Global.lastSetText = receivedText
+                Global.waitCopyLoop = true
 
                 clipboard.setPrimaryClip(clip)
                 //TODO watermark
@@ -223,8 +232,7 @@ class SignalRService : Service() {
         connection.error(ErrorCallback { error -> error.printStackTrace() })
 
         // Subscribe to the connected event
-        connection.connected(Runnable {
-//            println("Connecting...")
+        connection.connected {
             is_service_connected = true
             notification = NotificationCompat.Builder(context)
                 .setContentTitle(NOTIFICATION_TITLE)
@@ -239,14 +247,14 @@ class SignalRService : Service() {
                 .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
                 .build()
             mNotificationManager.notify(
-                GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID,
+                Global.SIGNALR_SERVICE_NOTIFICATION_ID,
                 notification
             )
-        })
+            updateStatus("Connecting...")
+        }
 
         // Subscribe to the closed event
-        connection.closed(Runnable {
-            println("DISCONNECTED")
+        connection.closed {
             notification = NotificationCompat.Builder(context)
                 .setContentTitle(NOTIFICATION_TITLE)
                 .setTicker(NOTIFICATION_TITLE)
@@ -260,14 +268,14 @@ class SignalRService : Service() {
                 .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
                 .build()
             mNotificationManager.notify(
-                GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID,
+                Global.SIGNALR_SERVICE_NOTIFICATION_ID,
                 notification
             )
-        })
+            updateStatus("Disconnected")
+        }
 
         // Start the connection
         connection.start().done {
-            println("Connected")
             notification = NotificationCompat.Builder(context)
                 .setContentTitle(NOTIFICATION_TITLE)
                 .setTicker(NOTIFICATION_TITLE)
@@ -281,12 +289,13 @@ class SignalRService : Service() {
                 .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
                 .build()
             mNotificationManager.notify(
-                GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID,
+                Global.SIGNALR_SERVICE_NOTIFICATION_ID,
                 notification
             )
+            updateStatus("Connected")
         }
 
         // Subscribe to the received event
-        connection.received(MessageReceivedHandler { json -> println("RAW received message: $json") })
+        connection.received { /*json -> Log.i(tag, "RAW received message: $json")*/ }
     }
 }

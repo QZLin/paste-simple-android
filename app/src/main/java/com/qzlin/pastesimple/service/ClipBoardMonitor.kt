@@ -7,7 +7,7 @@ import android.os.Environment
 import android.os.IBinder
 import android.text.TextUtils
 import android.util.Log
-import com.qzlin.pastesimple.GlobalValues
+import com.qzlin.pastesimple.Global
 import com.qzlin.pastesimple.helper.Utility
 import com.qzlin.pastesimple.service.SignalRService.LocalBinder
 import java.io.*
@@ -34,6 +34,7 @@ class ClipBoardMonitor : Service() {
 
     private var mService: SignalRService? = null
     private val mConnection: ServiceConnection = object : ServiceConnection {
+
         override fun onServiceConnected(className: ComponentName?, service: IBinder?) {
             Log.e(TAG, "Inside service connected - Activity ")
             // We've bound to SignalRService, cast the IBinder and get SignalRService instance
@@ -126,7 +127,7 @@ class ClipBoardMonitor : Service() {
                 //since the clipboard contains plain text.
                 val clip = mClipboardManager.getPrimaryClip()
                 val copied_content = clip?.getItemAt(0)?.text.toString()
-                if (copied_content != GlobalValues.lastSetText || !GlobalValues.waitCopyLoop) {
+                if (copied_content != Global.lastSetText || !Global.waitCopyLoop) {
                     Log.i("test", "clip:$copied_content") //TODO watermark
                     if (mService != null) {
                         var encoded: String
@@ -139,20 +140,9 @@ class ClipBoardMonitor : Service() {
                         mService!!.sendCopiedText(encoded)
                     }
                 } else {
-                    GlobalValues.waitCopyLoop = false
+                    Global.waitCopyLoop = false
                 }
 
-
-//                        Log.e(TAG, "Content at 0 " + copied_content);
-                /* if (copied_content.contains(GlobalValues.copied_water_mark)) {
-                            // Means Copied text already copied by ClipSync and came back again so don't send again
-                        } else {
-                            Log.e(TAG, "Copied Text : " + copied_content);
-                            if (mService != null) {
-    //                            sendNotification(copied_content);
-                                mService.sendCopiedText(copied_content);
-                            }
-                        }*/
             }
         }
 

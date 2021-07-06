@@ -1,10 +1,12 @@
 package com.qzlin.pastesimple
 
 import android.app.ActivityManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.util.Log
-import android.view.View
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -12,6 +14,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.qzlin.pastesimple.helper.Utility
 import com.qzlin.pastesimple.service.ClipBoardMonitor
 import com.qzlin.pastesimple.service.SignalRService
+import kotlinx.android.synthetic.main.activity_controls.*
+
 
 class MainActivity : AppCompatActivity() {
     private lateinit var start_service_button: FloatingActionButton
@@ -25,11 +29,21 @@ class MainActivity : AppCompatActivity() {
     private lateinit var utility: Utility
 
     private val tag = MainActivity::class.java.simpleName
+//    private lateinit var uiHandler: Handler
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_controls)
 
         utility = Utility(this)
+//        uiHandler = object : Handler(Looper.myLooper()!!) {
+//            override fun handleMessage(msg: Message) {
+//                Toast.makeText(applicationContext, msg.what, Toast.LENGTH_SHORT).show()
+//                super.handleMessage(msg)
+//            }
+//        }
+//        DataInterface.uiHandler = uiHandler
 
         server_address_edit_text = findViewById(R.id.serverAddressEditText)
         server_port_edit_text = findViewById(R.id.serverPortEditText)
@@ -56,7 +70,7 @@ class MainActivity : AppCompatActivity() {
                 utility.setUid(server_uid.text.toString().trim().toInt())
 
                 val signalRServiceIntent = Intent(applicationContext, SignalRService::class.java)
-                signalRServiceIntent.action = GlobalValues.START_SERVICE
+                signalRServiceIntent.action = Global.START_SERVICE
                 startService(signalRServiceIntent)
 
                 // Always Call after SignalR Service Started
@@ -75,6 +89,21 @@ class MainActivity : AppCompatActivity() {
             stopServices()
         }
         logout_button.setOnClickListener { logout() }
+
+        receiveConnectionStatus()
+    }
+
+    lateinit var updateUIReceiver: BroadcastReceiver
+    fun receiveConnectionStatus() {
+        val filter = IntentFilter()
+        filter.addAction(Global.STATUS_UPDATE_ACTION)
+
+        updateUIReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                textConnectStatus.text = intent?.getStringExtra("text") ?: ""
+            }
+        }
+        registerReceiver(updateUIReceiver, filter)
     }
 
     private fun isServiceRunning(classgetName: String?): Boolean {
@@ -91,7 +120,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopServices() {
         val signalRServiceIntent = Intent(applicationContext, SignalRService::class.java)
-        signalRServiceIntent.action = GlobalValues.STOP_SERVICE
+        signalRServiceIntent.action = Global.STOP_SERVICE
         stopService(signalRServiceIntent)
 
         // Always Call after SignalR Service Started
@@ -110,6 +139,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         stopServices()
+        unregisterReceiver(updateUIReceiver)
         super.onDestroy()
     }
 
