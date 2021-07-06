@@ -19,13 +19,15 @@ import java.net.URLDecoder
 import java.util.*
 
 class SignalRService : Service() {
-    private val TAG = SignalRService::class.java.simpleName
-    private lateinit var conn: HubConnection
+    private val tag = SignalRService::class.java.simpleName
+
+    private lateinit var connection: HubConnection
+    private lateinit var mHandler: Handler // to display Toast message
     private var mHubProxy: HubProxy? = null
-    private var mHandler // to display Toast message
-            : Handler? = null
+
 
     private val mBinder: LocalBinder = LocalBinder()
+
     var is_service_connected: Boolean = false
 
     private lateinit var context: Context
@@ -36,17 +38,21 @@ class SignalRService : Service() {
     private val name: CharSequence = "ClipSyncServer" // The user-visible name of the channel.
     private val NOTIFICATION_TITLE: String = "ClipSync Working"
     private val NOTIFICATION_CONTENT_TEXT: String = "Copy Paste"
+
     private var pStopSelf: PendingIntent? = null
+
     private lateinit var icon: Bitmap
+
     private var pendingIntent: PendingIntent? = null
     private var mChannel: NotificationChannel? = null
+
     private lateinit var utility: Utility
     var looperThreadCreated = false
     override fun onCreate() {
         super.onCreate()
-        Log.d("service", "Inside oncreate  - service")
+//        Log.d("service", "Inside oncreate  - service")
 
-        // context = this.getApplicationContext();
+//         context = this.applicationContext
         context = baseContext
         mNotificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         utility = Utility(context)
@@ -54,12 +60,12 @@ class SignalRService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (GlobalValues.STOP_SERVICE == intent!!.getAction()) {
-            Log.d(TAG, "called to cancel service")
+        if (GlobalValues.STOP_SERVICE == intent!!.action) {
+//            Log.d(tag, "called to cancel service")
             stopForeground(true)
             stopSelf()
             mNotificationManager.cancel(GlobalValues.SIGNALR_SERVICE_NOTIFICATION_ID)
-        } else if (GlobalValues.START_SERVICE == intent.getAction()) {
+        } else if (GlobalValues.START_SERVICE == intent.action) {
             showNotification()
             startSignalR()
         }
@@ -68,8 +74,8 @@ class SignalRService : Service() {
 
     override fun onDestroy() {
         try {
-            if (conn.state.compareTo(ConnectionState.Connected) > -1) {
-                conn.stop()
+            if (connection.state.compareTo(ConnectionState.Connected) > -1) {
+                connection.stop()
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -142,11 +148,11 @@ class SignalRService : Service() {
 
     fun sendCopiedText(text: String?) {
         if (is_service_connected) {
-            Log.e(TAG, "Sending Copied Text to SignalR")
+            Log.e(tag, "Sending Copied Text to SignalR")
             mHubProxy?.invoke(GlobalValues.send_copied_text_signalr_method_name, text)
             Log.i("test", "send:$text")
         } else {
-            Log.e(TAG, "Service is not connected so not sending copied text")
+            Log.e(tag, "Service is not connected so not sending copied text")
         }
     }
 
@@ -158,10 +164,10 @@ class SignalRService : Service() {
             "&uid=" + utility.getUid() + "&platform=ANDROID" + "&device_id=" + UUID.randomUUID()
                 .toString()
         val server_address = "http://" + utility.getServerAddress() + ":" + utility.getServerPort()
-        conn = HubConnection(server_address, parameters, true, logger)
+        connection = HubConnection(server_address, parameters, true, logger)
 
         // Create the hub proxy
-        val proxy = conn.createHubProxy(GlobalValues.SignalHubName)
+        val proxy = connection.createHubProxy(GlobalValues.SignalHubName)
         mHubProxy = proxy
         val subscription = proxy.subscribe(GlobalValues.receive_copied_text_signalr_method_name)
         subscription.addReceivedHandler(Action { eventParameters ->
@@ -218,10 +224,10 @@ class SignalRService : Service() {
 
 
         // Subscribe to the error event
-        conn.error(ErrorCallback { error -> error.printStackTrace() })
+        connection.error(ErrorCallback { error -> error.printStackTrace() })
 
         // Subscribe to the connected event
-        conn.connected(Runnable {
+        connection.connected(Runnable {
 //            println("Connecting...")
             is_service_connected = true
             notification = NotificationCompat.Builder(context)
@@ -243,7 +249,7 @@ class SignalRService : Service() {
         })
 
         // Subscribe to the closed event
-        conn.closed(Runnable {
+        connection.closed(Runnable {
             println("DISCONNECTED")
             notification = NotificationCompat.Builder(context)
                 .setContentTitle(NOTIFICATION_TITLE)
@@ -264,7 +270,7 @@ class SignalRService : Service() {
         })
 
         // Start the connection
-        conn.start().done {
+        connection.start().done {
             println("Connected")
             notification = NotificationCompat.Builder(context)
                 .setContentTitle(NOTIFICATION_TITLE)
@@ -285,6 +291,6 @@ class SignalRService : Service() {
         }
 
         // Subscribe to the received event
-        conn.received(MessageReceivedHandler { json -> println("RAW received message: $json") })
+        connection.received(MessageReceivedHandler { json -> println("RAW received message: $json") })
     }
 }

@@ -49,7 +49,7 @@ class MainActivity : AppCompatActivity() {
 
         start_service_button.setOnClickListener {
             if (server_address_edit_text.text.isNotEmpty() && server_port_edit_text.text.isNotEmpty() && server_uid.text.isNotEmpty()
-                && server_port_edit_text.text.length > 1 && server_uid.text.length > 1
+//                && server_port_edit_text.text.length > 1 && server_uid.text.length > 1
             ) {
                 utility.setServerAddress(server_address_edit_text.text.toString().trim())
                 utility.setServerPort(server_port_edit_text.text.toString().trim().toInt())
@@ -90,7 +90,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopServices() {
-        val signalRServiceIntent = Intent(this@MainActivity, SignalRService::class.java)
+        val signalRServiceIntent = Intent(applicationContext, SignalRService::class.java)
         signalRServiceIntent.action = GlobalValues.STOP_SERVICE
         stopService(signalRServiceIntent)
 
