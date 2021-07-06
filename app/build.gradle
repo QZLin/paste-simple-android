@@ -16,8 +16,8 @@ android {
         applicationId "com.pishangujeniya.clipsync"
         minSdkVersion 23
         targetSdkVersion 30
-        versionCode 20
-        versionName "2.0"
+        versionCode 30
+        versionName "1.0-Beta"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         multiDexEnabled true
     }
@@ -33,7 +33,6 @@ android {
         exclude 'lib/getLibs.sh'
         exclude 'lib/gson-2.8.2.jar'
     }
-    buildToolsVersion '29.0.3'
 }
 repositories {
     mavenCentral()
