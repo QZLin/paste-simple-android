@@ -1,6 +1,6 @@
 # PasteSimple
 
-A Common Clipboard tool between Windows and Android.
+A Common Clipboard Sync tool between Windows and Android.
 
 A new "Pasteasy"
 
@@ -23,12 +23,7 @@ These instructions will get you a copy of the android project up and running on 
 
 What things you need to install the software and how to install them
 
-* [JDK 10](http://www.oracle.com/technetwork/java/javase/downloads/jdk10-downloads-4416644.html)
 * [Android Studio](https://developer.android.com/studio/)
-
-## Built With
-
-* [Android Java](http://www.oracle.com/technetwork/java/javase/downloads/jdk10-downloads-4416644.html)
 
 ### PasteSimple Repositories
 
@@ -36,8 +31,10 @@ What things you need to install the software and how to install them
 * [paste-simple-android](https://github.com/QZLin/paste-simple-android)
 
 ## Acknowledgments
+### PasteSimple
+* 
 
-#### ClipSync
+### ClipSync
 * Thanks to all the contributors who invested their precious time into this.
 * Hat tip to anyone whose code was used.
 * Inspiration
