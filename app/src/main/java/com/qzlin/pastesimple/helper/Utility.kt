@@ -40,10 +40,10 @@ class Utility(var context: Context) {
         return userSharedPref.getInt("UID", 0)
     }
 
-    fun setServerAddress(address: String?) {
+    fun setServerAddress(address: String) {
         val editor = userSharedPref.edit()
-        editor?.putString("SERVER_ADDRESS", address)
-        editor?.apply()
+        editor.putString("SERVER_ADDRESS", address)
+        editor.apply()
     }
 
     fun getServerAddress(): String? {
@@ -60,20 +60,20 @@ class Utility(var context: Context) {
         return userSharedPref.getInt("SERVER_PORT", 0)
     }
 
-    fun setuserName(userName: String?) {
+    fun setuserName(userName: String) {
         val editor = userSharedPref.edit()
-        editor?.putString("USERNAME", userName)
-        editor?.apply()
+        editor.putString("USERNAME", userName)
+        editor.apply()
     }
 
     fun getuserName(): String? {
         return userSharedPref.getString("USERNAME", null)
     }
 
-    fun setEmail(email: String?) {
+    fun setEmail(email: String) {
         val editor = userSharedPref.edit()
-        editor?.putString("EMAIL", email)
-        editor?.apply()
+        editor.putString("EMAIL", email)
+        editor.apply()
     }
 
     fun getEmail(): String? {
@@ -90,8 +90,10 @@ class Utility(var context: Context) {
         val mClipboardManager =
             (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
         if (!mClipboardManager.hasPrimaryClip()) {
-        } else if (!Objects.requireNonNull(mClipboardManager.primaryClipDescription)
-                ?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)!!
+            return ""
+        } else if (!mClipboardManager.primaryClipDescription?.hasMimeType(
+                ClipDescription.MIMETYPE_TEXT_PLAIN
+            )!!
         ) {
 
             // since the clipboard has data but it is not plain text
@@ -104,7 +106,6 @@ class Utility(var context: Context) {
             val clip = mClipboardManager.primaryClip!!
             return clip.getItemAt(0).text.toString()
         }
-        return ""
     }
 
 
