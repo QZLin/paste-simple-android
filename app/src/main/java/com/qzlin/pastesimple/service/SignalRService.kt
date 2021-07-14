@@ -21,7 +21,7 @@ import java.util.*
 
 
 class SignalRService : Service() {
-    private val tag = SignalRService::class.java.simpleName
+    private val tag = SignalRService::class.qualifiedName
 
     private lateinit var connection: HubConnection
     private lateinit var mHandler: Handler // to display Toast message
@@ -31,6 +31,7 @@ class SignalRService : Service() {
     private val mBinder: LocalBinder = LocalBinder()
 
     var is_service_connected: Boolean = false
+    var connectButtonDown = false
 
     private lateinit var context: Context
     private lateinit var mNotificationManager: NotificationManager
@@ -61,20 +62,34 @@ class SignalRService : Service() {
         mHandler = Handler(Looper.getMainLooper())
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (Global.STOP_SERVICE == intent!!.action) {
+    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        when (intent.action) {
+            Global.START_SERVICE -> {
+                if (intent.getStringExtra("trigger") != "autostart")
+                    connectButtonDown = true
+                showNotification()
+                startSignalR()
+            }
+            Global.STOP_SERVICE -> {
+                connectButtonDown = false
+                stopForeground(true)
+                stopSelf()
+            }
+        }
+        /*if (intent.action == Global.STOP_SERVICE) {
 //            Log.d(tag, "called to cancel service")
             stopForeground(true)
             stopSelf()
             mNotificationManager.cancel(Global.SIGNALR_SERVICE_NOTIFICATION_ID)
-        } else if (Global.START_SERVICE == intent.action) {
+        } else if (intent.action == Global.START_SERVICE) {
             showNotification()
             startSignalR()
-        }
+        }*/
         return START_STICKY
     }
 
     override fun onDestroy() {
+        this.connectButtonDown = false
         try {
             if (connection.state.compareTo(ConnectionState.Connected) > -1) {
                 connection.stop()
@@ -164,6 +179,7 @@ class SignalRService : Service() {
         }
     }
 
+
     private fun startSignalR() {
         // Create a new console logger
         val logger = Logger { message, level -> Log.d("SignalR : ", message) }
@@ -229,7 +245,7 @@ class SignalRService : Service() {
 
 
         // Subscribe to the error event
-        connection.error(ErrorCallback { error -> error.printStackTrace() })
+        connection.error { error -> error.printStackTrace() }
 
         // Subscribe to the connected event
         connection.connected {
@@ -255,6 +271,7 @@ class SignalRService : Service() {
 
         // Subscribe to the closed event
         connection.closed {
+            is_service_connected = false
             notification = NotificationCompat.Builder(context)
                 .setContentTitle(NOTIFICATION_TITLE)
                 .setTicker(NOTIFICATION_TITLE)
@@ -272,6 +289,11 @@ class SignalRService : Service() {
                 notification
             )
             updateStatus("Disconnected")
+            //Auto reconnect if connect button down
+            if (connectButtonDown) {
+                updateStatus("Reconnecting")
+                startSignalR()
+            }
         }
 
         // Start the connection
