@@ -11,10 +11,12 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.qzlin.pastesimple.databinding.ActivityControlsBinding
 import com.qzlin.pastesimple.helper.Utility
 import com.qzlin.pastesimple.service.ClipBoardMonitor
 import com.qzlin.pastesimple.service.SignalRService
-import kotlinx.android.synthetic.main.activity_controls.*
+
+//import kotlinx.android.synthetic.main.activity_controls.*
 
 
 class MainActivity : AppCompatActivity() {
@@ -29,11 +31,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var utility: Utility
 
     private val tag = MainActivity::class.java.simpleName
-//    private lateinit var uiHandler: Handler
+
+    //    private lateinit var uiHandler: Handler
+    private lateinit var binding: ActivityControlsBinding
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        binding = ActivityControlsBinding.inflate(layoutInflater)
         setContentView(R.layout.activity_controls)
 
         utility = Utility(this)
@@ -100,7 +105,7 @@ class MainActivity : AppCompatActivity() {
 
         updateUIReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                textConnectStatus.text = intent?.getStringExtra("text") ?: ""
+                binding.textConnectStatus.text = intent?.getStringExtra("text") ?: ""
             }
         }
         registerReceiver(updateUIReceiver, filter)

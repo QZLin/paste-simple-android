@@ -1,6 +1,9 @@
-apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
+plugins {
+    id 'com.android.application'
+    id 'kotlin-parcelize'
+    id 'kotlin-android'
+//    id 'kotlin-android-extensions'
+}
 
 android {
     buildFeatures {
@@ -38,11 +41,12 @@ android {
         exclude 'lib/gson-2.8.2.jar'
     }
 }
-repositories {
-    mavenCentral()
-    google()
-    maven { url 'http://maven.aliyun.com/nexus/content/groups/public/' }
-}
+
+//repositories {
+//    mavenCentral()
+//    google()
+//    maven { url 'http://maven.aliyun.com/nexus/content/groups/public/' }
+//}
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
