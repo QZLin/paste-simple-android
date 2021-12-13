@@ -16,17 +16,15 @@ import com.qzlin.pastesimple.helper.Utility
 import com.qzlin.pastesimple.service.ClipBoardMonitor
 import com.qzlin.pastesimple.service.SignalRService
 
-//import kotlinx.android.synthetic.main.activity_controls.*
-
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var start_service_button: FloatingActionButton
+/*    private lateinit var start_service_button: FloatingActionButton
     private lateinit var stop_service_button: FloatingActionButton
     private lateinit var logout_button: FloatingActionButton
 
     private lateinit var server_address_edit_text: EditText
     private lateinit var server_port_edit_text: EditText
-    private lateinit var server_uid: EditText
+    private lateinit var server_uid: EditText*/
 
     private lateinit var utility: Utility
 
@@ -39,7 +37,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityControlsBinding.inflate(layoutInflater)
-        setContentView(R.layout.activity_controls)
+        setContentView(binding.root)
 
         utility = Utility(this)
 //        uiHandler = object : Handler(Looper.myLooper()!!) {
@@ -50,29 +48,31 @@ class MainActivity : AppCompatActivity() {
 //        }
 //        DataInterface.uiHandler = uiHandler
 
-        server_address_edit_text = findViewById(R.id.serverAddressEditText)
-        server_port_edit_text = findViewById(R.id.serverPortEditText)
-        server_uid = findViewById(R.id.serverUIDEditeText)
+//        server_address_edit_text = findViewById(R.id.serverAddressEditText)
+//        server_port_edit_text = findViewById(R.id.serverPortEditText)
+//        server_uid = findViewById(R.id.serverUIDEditeText)
 
-        server_address_edit_text.setText(if (utility.getServerAddress() == null) "" else utility.getServerAddress())
+        binding.serverAddressEditText.setText(if (utility.getServerAddress() == null) "" else utility.getServerAddress())
+        binding.serverAddressEditText.setText("abc");
 
         val server_port_value = utility.getServerPort()
         val server_uid_value = utility.getUid()
-        server_port_edit_text.setText(if (server_port_value == 0) "" else server_port_value.toString())
-        server_uid.setText(if (server_uid_value == 0) "" else server_uid_value.toString())
+        binding.serverPortEditText.setText(if (server_port_value == 0) "" else server_port_value.toString())
+        binding.serverUIDEditeText.setText(if (server_uid_value == 0) "" else server_uid_value.toString())
 
-        start_service_button = findViewById(R.id.activity_controls_service_start_fab)
-        stop_service_button = findViewById(R.id.activity_controls_service_stop_fab)
-        stop_service_button.hide()
-        logout_button = findViewById(R.id.activity_controls_log_out_fab)
+//        start_service_button = findViewById(R.id.activity_controls_service_start_fab)
+//        stop_service_button = findViewById(R.id.activity_controls_service_stop_fab)
+        binding.stopServicesButton.hide()
+//        binding.startServicesButton.hide()
+//        logout_button = findViewById(R.id.activity_controls_log_out_fab)
 
-        start_service_button.setOnClickListener {
-            if (server_address_edit_text.text.isNotEmpty() && server_port_edit_text.text.isNotEmpty() && server_uid.text.isNotEmpty()
-//                && server_port_edit_text.text.length > 1 && server_uid.text.length > 1
+        binding.startServicesButton.setOnClickListener {
+            if (binding.serverAddressEditText.text.isNotEmpty() && binding.serverPortEditText.text.isNotEmpty() && binding.serverUIDEditeText.text.isNotEmpty()
+//                && binding.serverPortEditText.text.length > 1 && server_uid.text.length > 1
             ) {
-                utility.setServerAddress(server_address_edit_text.text.toString().trim())
-                utility.setServerPort(server_port_edit_text.text.toString().trim().toInt())
-                utility.setUid(server_uid.text.toString().trim().toInt())
+                utility.setServerAddress(binding.serverAddressEditText.text.toString().trim())
+                utility.setServerPort(binding.serverPortEditText.text.toString().trim().toInt())
+                utility.setUid(binding.serverUIDEditeText.text.toString().trim().toInt())
 
                 val signalRServiceIntent = Intent(applicationContext, SignalRService::class.java)
                 signalRServiceIntent.action = Global.START_SERVICE
@@ -80,20 +80,21 @@ class MainActivity : AppCompatActivity() {
 
                 // Always Call after SignalR Service Started
                 startService(Intent(applicationContext, ClipBoardMonitor::class.java))
-                start_service_button.hide()
-                stop_service_button.show()
+                binding.startServicesButton.hide()
+                binding.stopServicesButton.show()
             } else {
-                server_address_edit_text.error = "Enter Required Fields"
-                server_port_edit_text.error = "Enter Required Fields"
-                server_uid.error = "Enter Required Fields"
+                binding.serverAddressEditText.error = "Enter Required Fields"
+                binding.serverPortEditText.error = "Enter Required Fields"
+                binding.serverUIDEditeText.error = "Enter Required Fields"
             }
         }
-        stop_service_button.setOnClickListener {
-            stop_service_button.hide()
-            start_service_button.show()
+        binding.stopServicesButton.setOnClickListener {
+            binding.stopServicesButton.hide()
+            binding.startServicesButton.show()
             stopServices()
         }
-        logout_button.setOnClickListener { logout() }
+//        binding.logoutServicesButton.setOnClickListener { logout() }
+        binding.logoutServicesButton.setOnClickListener { _ -> logout() }
 
         receiveConnectionStatus()
     }
@@ -136,7 +137,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
     }*/
 
-    private fun logout() {
+    fun logout() {
         utility.clearUserPrefs()
         Toast.makeText(applicationContext, "Logged Out", Toast.LENGTH_SHORT).show()
         finishAffinity()
