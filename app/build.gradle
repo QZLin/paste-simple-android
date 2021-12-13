@@ -3,20 +3,23 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
 android {
+    buildFeatures {
+        viewBinding true
+    }
     splits {
         abi {
             enable true
             reset()
 //            include 'x86', 'x86_64', 'armeabi', 'armeabi-v7a', 'mips', 'mips64', 'arm64-v8a'
 //            include 'armeabi-v7a'
-            universalApk false
+            universalApk true
         }
     }
-    compileSdkVersion 30
+    compileSdkVersion 31
     defaultConfig {
         applicationId "com.qzlin.pastesimple"
         minSdkVersion 23
-        targetSdkVersion 30
+        targetSdkVersion 31
         versionCode 31
         versionName "1.2-Beta"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'

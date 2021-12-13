@@ -32,7 +32,9 @@
 
             />
 
-        <activity android:name="com.qzlin.pastesimple.MainActivity">
+        <activity
+            android:name="com.qzlin.pastesimple.MainActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <!-- <category android:name="android.intent.category.DEFAULT" /> -->
