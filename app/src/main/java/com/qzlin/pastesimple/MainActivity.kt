@@ -1,106 +1,150 @@
 package com.qzlin.pastesimple
 
+import android.app.Activity
 import android.app.ActivityManager
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.os.Bundle
+import android.os.IBinder
 import android.util.Log
-import android.widget.EditText
+import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.qzlin.pastesimple.databinding.ActivityControlsBinding
+import com.qzlin.pastesimple.databinding.MainActivityBinding
 import com.qzlin.pastesimple.helper.Utility
 import com.qzlin.pastesimple.service.ClipBoardMonitor
 import com.qzlin.pastesimple.service.SignalRService
 
 
 class MainActivity : AppCompatActivity() {
-/*    private lateinit var start_service_button: FloatingActionButton
-    private lateinit var stop_service_button: FloatingActionButton
-    private lateinit var logout_button: FloatingActionButton
-
-    private lateinit var server_address_edit_text: EditText
-    private lateinit var server_port_edit_text: EditText
-    private lateinit var server_uid: EditText*/
-
     private lateinit var utility: Utility
 
-    private val tag = MainActivity::class.java.simpleName
-
     //    private lateinit var uiHandler: Handler
-    private lateinit var binding: ActivityControlsBinding
+    lateinit var binding: MainActivityBinding
+    private lateinit var syncServices: SignalRService
+    private var syncServBond = false
 
+    private val connection = object : ServiceConnection {
+
+        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            val binder = service as SignalRService.LocalBinder
+            syncServices = binder.getService()
+            syncServBond = true
+
+            syncServices.server?.onReceive {
+                val receivedText = syncServices.server?.receivedList?.poll()
+                if (receivedText.isNullOrEmpty())
+                    return@onReceive
+                val p = Regex("(.*?):((?:.|\n|\r)*)")
+                val r = p.matchEntire(receivedText) ?: return@onReceive
+                val command = r.groups[1]!!.value
+                val content = r.groups[2]?.value ?: ""
+                Log.i("test", "Parse:$command/$content")
+                if (content.isEmpty())
+                    return@onReceive
+
+                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText(
+                    System.currentTimeMillis().toString(), content
+                )
+                clipboard.setPrimaryClip(clip)
+                Log.i("test", "set_clip:$content")
+                Global.lastSetClip = clip
+            }
+            syncServices.updateStatusLabel = Runnable {
+                binding.textConnectStatus.text = syncServices.statusText
+            }
+        }
+
+        override fun onServiceDisconnected(arg0: ComponentName) {
+            syncServBond = false
+        }
+    }
+
+    private fun getViewStrID(v: View): String {
+        return resources.getResourceEntryName(v.id)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityControlsBinding.inflate(layoutInflater)
+        binding = MainActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         utility = Utility(this)
-//        uiHandler = object : Handler(Looper.myLooper()!!) {
-//            override fun handleMessage(msg: Message) {
-//                Toast.makeText(applicationContext, msg.what, Toast.LENGTH_SHORT).show()
-//                super.handleMessage(msg)
-//            }
-//        }
-//        DataInterface.uiHandler = uiHandler
+        val sharedPreferences = this.getSharedPreferences("USER", Activity.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
 
-//        server_address_edit_text = findViewById(R.id.serverAddressEditText)
-//        server_port_edit_text = findViewById(R.id.serverPortEditText)
-//        server_uid = findViewById(R.id.serverUIDEditeText)
+        fun saveTextData(v: TextView) {
+            editor.putString(getViewStrID(v), v.text.toString())
+            editor.apply()
+        }
 
-        binding.serverAddressEditText.setText(if (utility.getServerAddress() == null) "" else utility.getServerAddress())
-        binding.serverAddressEditText.setText("abc");
+        fun loadTextData(v: TextView) {
+            v.text = sharedPreferences.getString(getViewStrID(v), "")
+        }
+        loadTextData(binding.serverAddressEditText)
+        loadTextData(binding.serverPortEditText)
+        loadTextData(binding.uidEditeText)
+        loadTextData(binding.clientPortEditText)
 
-        val server_port_value = utility.getServerPort()
-        val server_uid_value = utility.getUid()
-        binding.serverPortEditText.setText(if (server_port_value == 0) "" else server_port_value.toString())
-        binding.serverUIDEditeText.setText(if (server_uid_value == 0) "" else server_uid_value.toString())
-
-//        start_service_button = findViewById(R.id.activity_controls_service_start_fab)
-//        stop_service_button = findViewById(R.id.activity_controls_service_stop_fab)
         binding.stopServicesButton.hide()
-//        binding.startServicesButton.hide()
-//        logout_button = findViewById(R.id.activity_controls_log_out_fab)
+
 
         binding.startServicesButton.setOnClickListener {
-            if (binding.serverAddressEditText.text.isNotEmpty() && binding.serverPortEditText.text.isNotEmpty() && binding.serverUIDEditeText.text.isNotEmpty()
-//                && binding.serverPortEditText.text.length > 1 && server_uid.text.length > 1
+            if (binding.serverAddressEditText.text.isNotEmpty() && binding.serverPortEditText.text.isNotEmpty() && binding.uidEditeText.text.isNotEmpty()
             ) {
-                utility.setServerAddress(binding.serverAddressEditText.text.toString().trim())
-                utility.setServerPort(binding.serverPortEditText.text.toString().trim().toInt())
-                utility.setUid(binding.serverUIDEditeText.text.toString().trim().toInt())
+                saveTextData(binding.serverAddressEditText)
+                saveTextData(binding.serverPortEditText)
+                saveTextData(binding.uidEditeText)
+                saveTextData(binding.clientPortEditText)
 
-                val signalRServiceIntent = Intent(applicationContext, SignalRService::class.java)
-                signalRServiceIntent.action = Global.START_SERVICE
-                startService(signalRServiceIntent)
+                val serverPort = binding.serverPortEditText.text.toString().toInt()
+                val clientListenPort = binding.clientPortEditText.text.toString().toInt()
+                val clientUid = binding.uidEditeText.text.toString().toInt()
+
+                val syncServIntent =
+                    Intent(applicationContext, SignalRService::class.java).also { intent ->
+                        bindService(intent, connection, Context.BIND_AUTO_CREATE)
+                    }
+                syncServIntent.action = Global.START_SERVICE
+                syncServIntent.putExtra(
+                    Global.DATA_SERVER_ADDR,
+                    binding.serverAddressEditText.text.toString()
+                )
+                syncServIntent.putExtra(Global.DATA_SERVER_PORT, serverPort)
+                syncServIntent.putExtra(Global.DATA_CLIENT_PORT, clientListenPort)
+                syncServIntent.putExtra(Global.DATA_CLIENT_UID, clientUid)
+                startService(syncServIntent)
+
 
                 // Always Call after SignalR Service Started
-                startService(Intent(applicationContext, ClipBoardMonitor::class.java))
+                val clipboardMIntent = Intent(applicationContext, ClipBoardMonitor::class.java)
+                startService(clipboardMIntent)
                 binding.startServicesButton.hide()
                 binding.stopServicesButton.show()
+
+
             } else {
-                binding.serverAddressEditText.error = "Enter Required Fields"
-                binding.serverPortEditText.error = "Enter Required Fields"
-                binding.serverUIDEditeText.error = "Enter Required Fields"
+                binding.serverAddressEditText.error = "Enter Server Address"
+                binding.serverPortEditText.error = "Enter Server Port"
+                binding.uidEditeText.error = "Enter UID"
             }
+
         }
         binding.stopServicesButton.setOnClickListener {
+            stopSyncServices()
             binding.stopServicesButton.hide()
             binding.startServicesButton.show()
-            stopServices()
         }
-//        binding.logoutServicesButton.setOnClickListener { logout() }
-        binding.logoutServicesButton.setOnClickListener { _ -> logout() }
+        binding.logoutServicesButton.setOnClickListener { logout() }
 
-        receiveConnectionStatus()
+//        receiveConnectionStatus()
+        binding.startServicesButton.performClick()
     }
 
-    lateinit var updateUIReceiver: BroadcastReceiver
-    fun receiveConnectionStatus() {
+    /*lateinit var updateUIReceiver: BroadcastReceiver
+    private fun receiveConnectionStatus() {
         val filter = IntentFilter()
         filter.addAction(Global.STATUS_UPDATE_ACTION)
 
@@ -110,9 +154,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
         registerReceiver(updateUIReceiver, filter)
-    }
+    }*/
 
-    private fun isServiceRunning(classgetName: String?): Boolean {
+    /*private fun isServiceRunning(classgetName: String?): Boolean {
         val manager = (getSystemService(ACTIVITY_SERVICE) as ActivityManager)
         for (service in manager.getRunningServices(Int.MAX_VALUE)) {
             Log.e(tag, service.service.className)
@@ -122,30 +166,28 @@ class MainActivity : AppCompatActivity() {
             }
         }
         return false
-    }
-
-    private fun stopServices() {
-        val signalRServiceIntent = Intent(applicationContext, SignalRService::class.java)
-        signalRServiceIntent.action = Global.STOP_SERVICE
-        stopService(signalRServiceIntent)
-
-        // Always Call after SignalR Service Started
-        stopService(Intent(applicationContext, ClipBoardMonitor::class.java))
-    }
-
-    /*override fun onResume() {
-        super.onResume()
     }*/
 
-    fun logout() {
-        utility.clearUserPrefs()
+    private fun stopSyncServices() {
+        val signalRServiceIntent = Intent(applicationContext, SignalRService::class.java)
+        stopService(signalRServiceIntent)
+
+        stopService(Intent(applicationContext, ClipBoardMonitor::class.java))
+        unbindService(connection)
+        syncServBond = false
+    }
+
+
+    private fun logout() {
+//        utility.clearUserPrefs()
         Toast.makeText(applicationContext, "Logged Out", Toast.LENGTH_SHORT).show()
         finishAffinity()
     }
 
     override fun onDestroy() {
-        stopServices()
-        unregisterReceiver(updateUIReceiver)
+        stopSyncServices()
+        unbindService(connection)
+        syncServBond = false
         super.onDestroy()
     }
 

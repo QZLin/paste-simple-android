@@ -3,6 +3,7 @@ package com.qzlin.pastesimple.service
 import android.app.Service
 import android.content.*
 import android.content.ClipboardManager.OnPrimaryClipChangedListener
+import android.os.Binder
 import android.os.Environment
 import android.os.IBinder
 import android.text.TextUtils
@@ -11,9 +12,7 @@ import com.qzlin.pastesimple.Global
 import com.qzlin.pastesimple.helper.Utility
 import com.qzlin.pastesimple.service.SignalRService.LocalBinder
 import java.io.*
-import java.net.URLEncoder
 import java.util.*
-import java.util.concurrent.Executors
 
 
 /*
@@ -29,31 +28,27 @@ class ClipBoardMonitor : Service() {
     private lateinit var mHistoryFile: File
     private lateinit var mClipboardManager: ClipboardManager
 
-    private val mThreadPool = Executors.newSingleThreadExecutor()
-    private var mBound = false
+    //    private val mThreadPool = Executors.newSingleThreadExecutor()
+    private var serviceBond = false
 
-    private var mService: SignalRService? = null
-    private val mConnection: ServiceConnection = object : ServiceConnection {
+    private lateinit var syncService: SignalRService
+    private val connection: ServiceConnection = object : ServiceConnection {
 
-        override fun onServiceConnected(className: ComponentName?, service: IBinder?) {
-            Log.e(TAG, "Inside service connected - Activity ")
-            // We've bound to SignalRService, cast the IBinder and get SignalRService instance
-            val binder = service as LocalBinder?
-            mService = binder?.getService() as SignalRService
-            mBound = true
-            Log.e(TAG, "bound status - $mBound")
+        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            val binder = service as SignalRService.LocalBinder
+            syncService = binder.getService()
+            serviceBond = true
+            Log.i(TAG, "bound status - $serviceBond")
         }
 
         override fun onServiceDisconnected(arg0: ComponentName?) {
-            mService = null
-            mBound = false
-            Log.e(TAG, "bound disconnected - status - $mBound")
+            serviceBond = false
+            Log.i(TAG, "bound disconnected - status - $serviceBond")
         }
     }
 
     override fun onCreate() {
         super.onCreate()
-
         // TODO: Show an ongoing notification when this service is running.
         utility = Utility(applicationContext)
         mHistoryFile = File(getExternalFilesDir(null), FILENAME)
@@ -65,7 +60,7 @@ class ClipBoardMonitor : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val mIntent = Intent(this, SignalRService::class.java)
-        bindService(mIntent, mConnection, BIND_AUTO_CREATE)
+        bindService(mIntent, connection, BIND_AUTO_CREATE)
         return super.onStartCommand(intent, flags, startId)
     }
 
@@ -76,19 +71,21 @@ class ClipBoardMonitor : Service() {
         )
 
         // Unbind from the service
-        if (mBound) {
-            unbindService(mConnection)
-            mBound = false
-            Log.e(TAG, "bound disconnecting - status - $mBound")
+        if (serviceBond) {
+            unbindService(connection)
+            serviceBond = false
+            Log.i(TAG, "bound disconnecting - status - $serviceBond")
         }
-        if (mService != null) {
-            mService!!.onDestroy()
-        }
+    }
+    inner class LocalBinder : Binder() {
+        // Return this instance of LocalService so clients can call public methods
+        fun getService(): ClipBoardMonitor = this@ClipBoardMonitor
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
+    override fun onBind(p0: Intent): IBinder {
+        return LocalBinder()
     }
+
 
     private fun isExternalStorageWritable(): Boolean {
         val state = Environment.getExternalStorageState()
@@ -98,12 +95,9 @@ class ClipBoardMonitor : Service() {
     private val mOnPrimaryClipChangedListener: OnPrimaryClipChangedListener =
         OnPrimaryClipChangedListener {
             Log.d(TAG, "onPrimaryClipChanged")
-            //                    mThreadPool.execute(new WriteHistoryRunnable(
-//                            clip.getItemAt(0).getText()));
             if (!mClipboardManager.hasPrimaryClip()) {
                 Log.e(TAG, "no Primary Clip")
-            } else if (!mClipboardManager.primaryClipDescription
-                    ?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)!!
+            } else if (!mClipboardManager.primaryClipDescription?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)!!
             ) {
                 assert(true)
                 /*
@@ -123,26 +117,14 @@ class ClipBoardMonitor : Service() {
                             }
                         }*/
             } else {
-
                 //since the clipboard contains plain text.
-                val clip = mClipboardManager.getPrimaryClip()
-                val copied_content = clip?.getItemAt(0)?.text.toString()
-                if (copied_content != Global.lastSetText || !Global.waitCopyLoop) {
-                    Log.i("test", "clip:$copied_content") //TODO watermark
-                    if (mService != null) {
-                        var encoded: String
-                        try {
-                            encoded = URLEncoder.encode(copied_content, "utf-8").replace("+", "%20")
-                        } catch (e: UnsupportedEncodingException) {
-                            encoded = copied_content
-                            Log.e("test", e.toString())
-                        }
-                        mService!!.sendCopiedText(encoded)
-                    }
-                } else {
-                    Global.waitCopyLoop = false
+                val clipData = mClipboardManager.primaryClip
+                val copiedContent = clipData?.getItemAt(0)?.text.toString()
+                Log.i("test", "clip_update:$copiedContent")
+                if (Global.lastSetClip == null || Global.lastSetClip?.description?.label != clipData?.description?.label) {
+                    syncService.sendCopiedText(copiedContent)
+//                    Global.lastSetClip = clipData
                 }
-
             }
         }
 

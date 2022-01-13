@@ -13,31 +13,33 @@ import com.qzlin.pastesimple.R
 import com.qzlin.pastesimple.helper.Utility
 import microsoft.aspnet.signalr.client.*
 import microsoft.aspnet.signalr.client.hubs.HubConnection
-import microsoft.aspnet.signalr.client.hubs.HubProxy
-import java.io.UnsupportedEncodingException
-import java.net.URI
-import java.net.URLDecoder
+import java.net.*
 import java.util.*
 
 
 class SignalRService : Service() {
-    private val tag = SignalRService::class.qualifiedName
+//    private val tag = SignalRService::class.qualifiedName
 
     private lateinit var connection: HubConnection
     private lateinit var mHandler: Handler // to display Toast message
-    private var mHubProxy: HubProxy? = null
+//    private var mHubProxy: HubProxy? = null
 
 
-    private val mBinder: LocalBinder = LocalBinder()
+    private val binder = LocalBinder()
 
-    var is_service_connected: Boolean = false
+    var isClientRegistered: Boolean = false
     var connectButtonDown = false
 
     private lateinit var context: Context
     private lateinit var mNotificationManager: NotificationManager
     private lateinit var notification: Notification
 
-    private val CHANNEL_ID: String = "ClipSyncServer" // The id of the channel.
+    lateinit var serverAddress: String
+    var serverPort: Int? = null
+    lateinit var uid: String
+    var clientListenPort: Int? = null
+
+    private val channelId: String = "ClipSyncServer" // The id of the channel.
     private val name: CharSequence = "ClipSyncServer" // The user-visible name of the channel.
     private val NOTIFICATION_TITLE: String = "ClipSync Working"
     private val NOTIFICATION_CONTENT_TEXT: String = "Copy Paste"
@@ -50,12 +52,9 @@ class SignalRService : Service() {
     private var mChannel: NotificationChannel? = null
 
     private lateinit var utility: Utility
-    var looperThreadCreated = false
+
     override fun onCreate() {
         super.onCreate()
-//        Log.d("service", "Inside oncreate  - service")
-
-//         context = this.applicationContext
         context = baseContext
         mNotificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         utility = Utility(context)
@@ -63,54 +62,47 @@ class SignalRService : Service() {
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        Log.i("test", "Sync Services Start")
         when (intent.action) {
             Global.START_SERVICE -> {
+                serverAddress = intent.getStringExtra(Global.DATA_SERVER_ADDR)!!
+                serverPort = intent.getIntExtra(Global.DATA_SERVER_PORT, 9999)
+                clientListenPort = intent.getIntExtra(Global.DATA_CLIENT_PORT, 8888)
+                uid = intent.getIntExtra(Global.DATA_CLIENT_UID, 0).toString()
                 if (intent.getStringExtra("trigger") != "autostart")
                     connectButtonDown = true
+
                 showNotification()
-                startSignalR()
+                startSync()
             }
             Global.STOP_SERVICE -> {
+                server?.stop()
                 connectButtonDown = false
                 stopForeground(true)
                 stopSelf()
             }
         }
-        /*if (intent.action == Global.STOP_SERVICE) {
-//            Log.d(tag, "called to cancel service")
-            stopForeground(true)
-            stopSelf()
-            mNotificationManager.cancel(Global.SIGNALR_SERVICE_NOTIFICATION_ID)
-        } else if (intent.action == Global.START_SERVICE) {
-            showNotification()
-            startSignalR()
-        }*/
+        super.onStartCommand(intent, flags, startId)
         return START_STICKY
     }
 
     override fun onDestroy() {
+        Log.i("test","Sync Services Stopped")
+        server?.stop()
+        updateStatus("stopped")
         this.connectButtonDown = false
-        try {
-            if (connection.state.compareTo(ConnectionState.Connected) > -1) {
-                connection.stop()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
         mNotificationManager.cancel(Global.SIGNALR_SERVICE_NOTIFICATION_ID)
         super.onDestroy()
     }
 
-    override fun onUnbind(intent: Intent?): Boolean {
-        Log.d("Unbounding", "SignalRservice Service unbound")
-        return super.onUnbind(intent)
-    }
+//    override fun onUnbind(intent: Intent?): Boolean {
+//        Log.d("Unbounding", "SignalRservice Service unbound")
+//        return super.onUnbind(intent)
+//    }
+
 
     override fun onBind(intent: Intent?): IBinder {
-        // Return the communication channel to the service.
-        Log.d("service", "onBind  - service")
-        //        startSignalR();
-        return mBinder
+        return binder
     }
 
     /**
@@ -118,16 +110,14 @@ class SignalRService : Service() {
      * runs in the same process as its clients, we don't need to deal with IPC.
      */
     inner class LocalBinder : Binder() {
-        fun getService(): SignalRService {
-            // Return this instance of SignalRService so clients can call public methods
-            return this@SignalRService
-        }
+        // Return this instance of LocalService so clients can call public methods
+        fun getService(): SignalRService = this@SignalRService
     }
 
     private fun showNotification() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val importance = NotificationManager.IMPORTANCE_HIGH
-            mChannel = NotificationChannel(CHANNEL_ID, name, importance)
+            mChannel = NotificationChannel(channelId, name, importance)
             mNotificationManager.createNotificationChannel(mChannel!!)
         }
         val notificationIntent = Intent(this, MainActivity::class.java)
@@ -140,15 +130,15 @@ class SignalRService : Service() {
             resources,
             R.drawable.clip_sync_logo_2
         )
-        val stop_self_intent = Intent(this@SignalRService, SignalRService::class.java)
-        stop_self_intent.action = Global.STOP_SERVICE
+        val stopSelfIntent = Intent(this@SignalRService, SignalRService::class.java)
+        stopSelfIntent.action = Global.STOP_SERVICE
         pStopSelf = PendingIntent.getService(
             context,
             Global.SIGNALR_SERVICE_NOTIFICATION_ID,
-            stop_self_intent,
+            stopSelfIntent,
             PendingIntent.FLAG_CANCEL_CURRENT
         )
-        notification = NotificationCompat.Builder(this)
+        notification = NotificationCompat.Builder(this, "paste_simple")
             .setContentTitle(NOTIFICATION_TITLE)
             .setTicker(NOTIFICATION_TITLE)
             .setContentText(NOTIFICATION_CONTENT_TEXT)
@@ -157,32 +147,131 @@ class SignalRService : Service() {
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setChannelId(CHANNEL_ID)
+            .setChannelId(channelId)
             .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
             .build()
         startForeground(Global.SIGNALR_SERVICE_NOTIFICATION_ID, notification)
     }
 
+    var updateStatusLabel: Runnable? = null
+    var statusText: String = ""
     private fun updateStatus(data: String) {
-        val intent = Intent()
-        intent.action = Global.STATUS_UPDATE_ACTION
-        intent.putExtra("text", data)
-        this.sendBroadcast(intent)
+        statusText = data
+        updateStatusLabel?.run()
+//        val intent = Intent()
+//        intent.action = Global.STATUS_UPDATE_ACTION
+//        intent.putExtra("text", data)
+//        this.sendBroadcast(intent)
+    }
+
+    private fun sendUDP(message: String, address: String, port: Int = 9999) {
+        Thread {
+            val socket = DatagramSocket()
+            val sendData = message.toByteArray()
+            val sendPacket = DatagramPacket(
+                sendData,
+                sendData.size,
+                InetAddress.getByName(address), port
+            )
+            socket.send(sendPacket)
+            Log.i("test", "send->$address:$port,$message")
+        }.start()
     }
 
     fun sendCopiedText(text: String) {
-        if (is_service_connected) {
-            mHubProxy?.invoke(Global.send_copied_text_signalr_method_name, text)
-            Log.i("test", "send:$text")
-        } else {
-            Log.e(tag, "Service not connected, send fail")
+        sendUDP("SYNC:$text", serverAddress)
+    }
+
+    class Server(var port: Int, var host: String = "0.0.0.0") {
+
+        var receivedList: Queue<String> = LinkedList()
+        var thread: Thread? = null
+        var running = false
+        private var socket: DatagramSocket? = null
+
+        fun start() {
+            running = true
+            thread = Thread {
+                while (true) {
+                    val buffer = ByteArray(1024)
+                    socket = DatagramSocket(port, InetAddress.getByName(host))
+                    val packet = DatagramPacket(buffer, buffer.size)
+                    try {
+                        socket?.receive(packet)
+                    } catch (e: SocketException) {
+                        Log.e("test", "Socket Server", e)
+                        if (!running)
+                            break
+                    }
+
+                    val msg = String(packet.data, packet.offset, packet.length)
+                    socket!!.close()
+                    Log.i("test", "recv:$msg")
+
+                    receivedList.offer(msg)
+                    while (!receivedList.isEmpty())
+                        onReceiveHandler?.run()
+                }
+            }
+            thread!!.start()
+            onStart?.run()
+        }
+
+        fun stop() {
+            running = false
+            socket?.close()
+            thread?.interrupt()
+        }
+
+        var onStart: Runnable? = null
+        fun connected(handler: Runnable) {
+            this.onStart = handler
+        }
+
+        var onReceiveHandler: Runnable? = null
+        fun onReceive(handler: Runnable) {
+            this.onReceiveHandler = handler
         }
     }
 
+    private fun register(clientUid: String) {
+        sendUDP("REGISTER:$clientUid", serverAddress)
+    }
 
-    private fun startSignalR() {
+
+    var server: Server? = null
+    private fun startSync() {
         // Create a new console logger
-        val logger = Logger { message, level -> Log.d("SignalR : ", message) }
+        register(uid)
+        server?.stop()
+        server = Server(clientListenPort!!)
+        Log.i("test", "start recv on $clientListenPort")
+
+        server!!.connected {
+            isClientRegistered = true
+            notification = NotificationCompat.Builder(context, "status")
+                .setContentTitle(NOTIFICATION_TITLE)
+                .setTicker(NOTIFICATION_TITLE)
+                .setContentText("Registered")
+                .setSmallIcon(R.drawable.clip_sync_logo_2)
+                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setChannelId(channelId)
+                .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
+                .build()
+            mNotificationManager.notify(
+                Global.SIGNALR_SERVICE_NOTIFICATION_ID,
+                notification
+            )
+            updateStatus("Client Registered")
+        }
+
+        server!!.start()
+        return
+
+        /*val logger = Logger { message, level -> Log.d("SignalR : ", message) }
         // Connect to the server
         val parameters =
             "&uid=" + utility.getUid() + "&platform=ANDROID" + "&device_id=" + UUID.randomUUID()
@@ -228,7 +317,7 @@ class SignalRService : Service() {
 
                 clipboard.setPrimaryClip(clip)
                 //TODO watermark
-            })
+            })*/
 
 
         /*proxy.subscribe(new Object() {
@@ -244,12 +333,12 @@ class SignalRService : Service() {
         });*/
 
 
-        // Subscribe to the error event
+        /*// Subscribe to the error event
         connection.error { error -> error.printStackTrace() }
 
         // Subscribe to the connected event
         connection.connected {
-            is_service_connected = true
+            isClientRegistered = true
             notification = NotificationCompat.Builder(context)
                 .setContentTitle(NOTIFICATION_TITLE)
                 .setTicker(NOTIFICATION_TITLE)
@@ -259,7 +348,7 @@ class SignalRService : Service() {
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
-                .setChannelId(CHANNEL_ID)
+                .setChannelId(channelId)
                 .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
                 .build()
             mNotificationManager.notify(
@@ -271,7 +360,7 @@ class SignalRService : Service() {
 
         // Subscribe to the closed event
         connection.closed {
-            is_service_connected = false
+            isClientRegistered = false
             notification = NotificationCompat.Builder(context)
                 .setContentTitle(NOTIFICATION_TITLE)
                 .setTicker(NOTIFICATION_TITLE)
@@ -281,7 +370,7 @@ class SignalRService : Service() {
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .setOnlyAlertOnce(true)
-                .setChannelId(CHANNEL_ID)
+                .setChannelId(channelId)
                 .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
                 .build()
             mNotificationManager.notify(
@@ -292,7 +381,7 @@ class SignalRService : Service() {
             //Auto reconnect if connect button down
             if (connectButtonDown) {
                 updateStatus("Reconnecting")
-                startSignalR()
+//                startSignalR()
             }
         }
 
@@ -307,7 +396,7 @@ class SignalRService : Service() {
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
-                .setChannelId(CHANNEL_ID)
+                .setChannelId(channelId)
                 .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
                 .build()
             mNotificationManager.notify(
@@ -318,6 +407,7 @@ class SignalRService : Service() {
         }
 
         // Subscribe to the received event
-        connection.received { /*json -> Log.i(tag, "RAW received message: $json")*/ }
+        connection.received { *//*json -> Log.i(tag, "RAW received message: $json")*//* }
+    */
     }
 }

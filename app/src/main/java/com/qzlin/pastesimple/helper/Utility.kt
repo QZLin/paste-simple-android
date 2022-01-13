@@ -9,13 +9,7 @@ import android.net.ConnectivityManager
 import java.util.*
 
 class Utility(var context: Context) {
-    private val TAG = Utility::class.qualifiedName
-    private val userSharedPref: SharedPreferences
-    private val USER: String = "USER"
-
-    init {
-        userSharedPref = context.getSharedPreferences(USER, Context.MODE_PRIVATE)
-    }
+    private val userSharedPref: SharedPreferences = context.getSharedPreferences("USER", Context.MODE_PRIVATE)
 
     fun getPermissions(): Array<String?> {
         return arrayOf(
@@ -32,8 +26,8 @@ class Utility(var context: Context) {
 
     fun setUid(uid: Int) {
         val editor = userSharedPref.edit()
-        editor?.putInt("UID", uid)
-        editor?.apply()
+        editor.putInt("UID", uid)
+        editor.apply()
     }
 
     fun getUid(): Int {

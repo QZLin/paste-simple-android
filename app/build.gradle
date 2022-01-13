@@ -13,8 +13,8 @@ android {
         abi {
             enable true
             reset()
-//            include 'x86', 'x86_64', 'armeabi', 'armeabi-v7a', 'mips', 'mips64', 'arm64-v8a'
-//            include 'armeabi-v7a'
+            include 'x86', 'x86_64', 'armeabi', 'armeabi-v7a', 'mips', 'mips64', 'arm64-v8a'
+            include 'armeabi-v7a'
             universalApk true
         }
     }*/
@@ -41,12 +41,6 @@ android {
         exclude 'lib/gson-2.8.2.jar'
     }
 }
-
-//repositories {
-//    mavenCentral()
-//    google()
-//    maven { url 'http://maven.aliyun.com/nexus/content/groups/public/' }
-//}
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')

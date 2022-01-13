@@ -28,9 +28,7 @@
         <service
             android:name="com.qzlin.pastesimple.service.SignalRService"
             android:exported="false"
-            android:label="ClipSync SignalR"
-
-            />
+            android:label="PasteSimple Sync Services" />
 
         <activity
             android:name="com.qzlin.pastesimple.MainActivity"
