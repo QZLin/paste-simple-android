@@ -26,9 +26,9 @@
             android:exported="false"
             android:label="Clipboard Monitor" />
         <service
-            android:name="com.qzlin.pastesimple.service.SignalRService"
+            android:name="com.qzlin.pastesimple.service.SyncService"
             android:exported="false"
-            android:label="PasteSimple Sync Services" />
+            android:label="PasteSimple Sync Service" />
 
         <activity
             android:name="com.qzlin.pastesimple.MainActivity"

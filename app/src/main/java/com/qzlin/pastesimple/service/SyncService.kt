@@ -7,24 +7,18 @@ import android.graphics.BitmapFactory
 import android.os.*
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.google.gson.Gson
 import com.qzlin.pastesimple.Global
 import com.qzlin.pastesimple.MainActivity
 import com.qzlin.pastesimple.R
 import com.qzlin.pastesimple.helper.Utility
 import microsoft.aspnet.signalr.client.*
-import microsoft.aspnet.signalr.client.hubs.HubConnection
 import java.net.*
 import java.util.*
 
 
-class SignalRService : Service() {
-//    private val tag = SignalRService::class.qualifiedName
-
-    private lateinit var connection: HubConnection
+class SyncService : Service() {
     private lateinit var mHandler: Handler // to display Toast message
-//    private var mHubProxy: HubProxy? = null
-
-
     private val binder = LocalBinder()
 
     var isClientRegistered: Boolean = false
@@ -62,7 +56,7 @@ class SignalRService : Service() {
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        Log.i("test", "Sync Services Start")
+        Log.i("test", "Sync Service Start")
         when (intent.action) {
             Global.START_SERVICE -> {
                 serverAddress = intent.getStringExtra(Global.DATA_SERVER_ADDR)!!
@@ -75,30 +69,19 @@ class SignalRService : Service() {
                 showNotification()
                 startSync()
             }
-            Global.STOP_SERVICE -> {
-                server?.stop()
-                connectButtonDown = false
-                stopForeground(true)
-                stopSelf()
-            }
         }
         super.onStartCommand(intent, flags, startId)
         return START_STICKY
     }
 
     override fun onDestroy() {
-        Log.i("test","Sync Services Stopped")
+        Log.i("test", "Sync Services Stopped")
         server?.stop()
         updateStatus("stopped")
         this.connectButtonDown = false
         mNotificationManager.cancel(Global.SIGNALR_SERVICE_NOTIFICATION_ID)
         super.onDestroy()
     }
-
-//    override fun onUnbind(intent: Intent?): Boolean {
-//        Log.d("Unbounding", "SignalRservice Service unbound")
-//        return super.onUnbind(intent)
-//    }
 
 
     override fun onBind(intent: Intent?): IBinder {
@@ -111,7 +94,7 @@ class SignalRService : Service() {
      */
     inner class LocalBinder : Binder() {
         // Return this instance of LocalService so clients can call public methods
-        fun getService(): SignalRService = this@SignalRService
+        fun getService(): SyncService = this@SyncService
     }
 
     private fun showNotification() {
@@ -130,7 +113,7 @@ class SignalRService : Service() {
             resources,
             R.drawable.clip_sync_logo_2
         )
-        val stopSelfIntent = Intent(this@SignalRService, SignalRService::class.java)
+        val stopSelfIntent = Intent(this@SyncService, SyncService::class.java)
         stopSelfIntent.action = Global.STOP_SERVICE
         pStopSelf = PendingIntent.getService(
             context,
@@ -158,10 +141,6 @@ class SignalRService : Service() {
     private fun updateStatus(data: String) {
         statusText = data
         updateStatusLabel?.run()
-//        val intent = Intent()
-//        intent.action = Global.STATUS_UPDATE_ACTION
-//        intent.putExtra("text", data)
-//        this.sendBroadcast(intent)
     }
 
     private fun sendUDP(message: String, address: String, port: Int = 9999) {
@@ -178,8 +157,16 @@ class SignalRService : Service() {
         }.start()
     }
 
+    private fun sendSimpleData(command: String, content: String = "") {
+        val data: MutableMap<String, String> = LinkedHashMap()
+        val gson = Gson()
+        data["command"] = command
+        data["content"] = content
+        sendUDP(gson.toJson(data), serverAddress)
+    }
+
     fun sendCopiedText(text: String) {
-        sendUDP("SYNC:$text", serverAddress)
+        sendSimpleData("SYNC", text)
     }
 
     class Server(var port: Int, var host: String = "0.0.0.0") {
@@ -193,20 +180,20 @@ class SignalRService : Service() {
             running = true
             thread = Thread {
                 while (true) {
-                    val buffer = ByteArray(1024)
+                    val buffer = ByteArray(2048)
                     socket = DatagramSocket(port, InetAddress.getByName(host))
                     val packet = DatagramPacket(buffer, buffer.size)
                     try {
                         socket?.receive(packet)
                     } catch (e: SocketException) {
-                        Log.e("test", "Socket Server", e)
+                        Log.e("test", "UDP Socket Server Exception", e)
                         if (!running)
                             break
                     }
 
                     val msg = String(packet.data, packet.offset, packet.length)
                     socket!!.close()
-                    Log.i("test", "recv:$msg")
+                    Log.i("test", "recv:${msg.replace("\n", "\\n").replace("\r", "\\r")}")
 
                     receivedList.offer(msg)
                     while (!receivedList.isEmpty())
@@ -214,7 +201,7 @@ class SignalRService : Service() {
                 }
             }
             thread!!.start()
-            onStart?.run()
+            onStartHandler?.run()
         }
 
         fun stop() {
@@ -223,9 +210,9 @@ class SignalRService : Service() {
             thread?.interrupt()
         }
 
-        var onStart: Runnable? = null
-        fun connected(handler: Runnable) {
-            this.onStart = handler
+        var onStartHandler: Runnable? = null
+        fun onStart(handler: Runnable) {
+            this.onStartHandler = handler
         }
 
         var onReceiveHandler: Runnable? = null
@@ -235,19 +222,18 @@ class SignalRService : Service() {
     }
 
     private fun register(clientUid: String) {
-        sendUDP("REGISTER:$clientUid", serverAddress)
+        sendSimpleData("REGISTER", clientUid)
     }
-
 
     var server: Server? = null
     private fun startSync() {
         // Create a new console logger
-        register(uid)
         server?.stop()
+        register(uid)
         server = Server(clientListenPort!!)
         Log.i("test", "start recv on $clientListenPort")
 
-        server!!.connected {
+        server!!.onStart {
             isClientRegistered = true
             notification = NotificationCompat.Builder(context, "status")
                 .setContentTitle(NOTIFICATION_TITLE)
@@ -265,149 +251,10 @@ class SignalRService : Service() {
                 Global.SIGNALR_SERVICE_NOTIFICATION_ID,
                 notification
             )
-            updateStatus("Client Registered")
         }
 
         server!!.start()
+        updateStatus("Client Registered")
         return
-
-        /*val logger = Logger { message, level -> Log.d("SignalR : ", message) }
-        // Connect to the server
-        val parameters =
-            "&uid=" + utility.getUid() + "&platform=ANDROID" + "&device_id=" + UUID.randomUUID()
-                .toString()
-        val serverAddress = "http://" + utility.getServerAddress() + ":" + utility.getServerPort()
-        connection = HubConnection(serverAddress, parameters, true, logger)
-
-        // Create the hub proxy
-        val proxy = connection.createHubProxy(Global.SignalHubName)
-        mHubProxy = proxy
-
-        val subscription = proxy.subscribe(Global.receive_copied_text_signalr_method_name)
-        subscription.addReceivedHandler(
-            Action { eventParameters ->
-                if (eventParameters == null || eventParameters.isEmpty()) {
-                    return@Action
-                }
-
-                if (!looperThreadCreated) {
-                    Looper.prepare()
-                    looperThreadCreated = true
-                }
-
-                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                var receivedText: String = eventParameters[0].toString()
-                try {
-                    receivedText = URLDecoder.decode(receivedText, "utf-8")
-                } catch (e: UnsupportedEncodingException) {
-                    e.printStackTrace()
-                }
-
-                if (receivedText.length > 2)
-                // handle ""text""
-                    receivedText = receivedText.substring(1, receivedText.length - 1)
-
-                val clip = ClipData.newPlainText(
-                    System.currentTimeMillis().toString(), receivedText
-                )
-                Log.i("test", "set:$receivedText")
-
-                Global.lastSetText = receivedText
-                Global.waitCopyLoop = true
-
-                clipboard.setPrimaryClip(clip)
-                //TODO watermark
-            })*/
-
-
-        /*proxy.subscribe(new Object() {
-            @SuppressWarnings("unused")
-            public void recieveIncomingChat(RecieveIncomingchats recieveIncomingchats) {
-                MainFragment.receivedincommingchats(recieveIncomingchats);
-                Log.d("hit:", "Hit on receive Incoming chats");
-            }
-            @SuppressWarnings("unused")
-            public void serviceStatus(boolean temp){
-                Log.d("service_status", "status called");
-            }
-        });*/
-
-
-        /*// Subscribe to the error event
-        connection.error { error -> error.printStackTrace() }
-
-        // Subscribe to the connected event
-        connection.connected {
-            isClientRegistered = true
-            notification = NotificationCompat.Builder(context)
-                .setContentTitle(NOTIFICATION_TITLE)
-                .setTicker(NOTIFICATION_TITLE)
-                .setContentText("Connecting...")
-                .setSmallIcon(R.drawable.clip_sync_logo_2)
-                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
-                .setContentIntent(pendingIntent)
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-                .setChannelId(channelId)
-                .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
-                .build()
-            mNotificationManager.notify(
-                Global.SIGNALR_SERVICE_NOTIFICATION_ID,
-                notification
-            )
-            updateStatus("Connecting...")
-        }
-
-        // Subscribe to the closed event
-        connection.closed {
-            isClientRegistered = false
-            notification = NotificationCompat.Builder(context)
-                .setContentTitle(NOTIFICATION_TITLE)
-                .setTicker(NOTIFICATION_TITLE)
-                .setContentText("Disconnected")
-                .setSmallIcon(R.drawable.clip_sync_logo_2)
-                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true)
-                .setOnlyAlertOnce(true)
-                .setChannelId(channelId)
-                .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
-                .build()
-            mNotificationManager.notify(
-                Global.SIGNALR_SERVICE_NOTIFICATION_ID,
-                notification
-            )
-            updateStatus("Disconnected")
-            //Auto reconnect if connect button down
-            if (connectButtonDown) {
-                updateStatus("Reconnecting")
-//                startSignalR()
-            }
-        }
-
-        // Start the connection
-        connection.start().done {
-            notification = NotificationCompat.Builder(context)
-                .setContentTitle(NOTIFICATION_TITLE)
-                .setTicker(NOTIFICATION_TITLE)
-                .setContentText("Connected")
-                .setSmallIcon(R.drawable.clip_sync_logo_2)
-                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
-                .setContentIntent(pendingIntent)
-                .setOngoing(true)
-                .setOnlyAlertOnce(true)
-                .setChannelId(channelId)
-                .addAction(android.R.drawable.ic_media_previous, "Stop", pStopSelf)
-                .build()
-            mNotificationManager.notify(
-                Global.SIGNALR_SERVICE_NOTIFICATION_ID,
-                notification
-            )
-            updateStatus("Connected")
-        }
-
-        // Subscribe to the received event
-        connection.received { *//*json -> Log.i(tag, "RAW received message: $json")*//* }
-    */
     }
 }

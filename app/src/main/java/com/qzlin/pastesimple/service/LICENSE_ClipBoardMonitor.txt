@@ -19,6 +19,7 @@
 */
 
 //Comment of ClipSync
+//Command of PasteSimple
 //Thanks to the code author
 
 

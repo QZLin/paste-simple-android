@@ -1,7 +1,6 @@
 package com.qzlin.pastesimple
 
 import android.app.Activity
-import android.app.ActivityManager
 import android.content.*
 import android.os.Bundle
 import android.os.IBinder
@@ -10,25 +9,26 @@ import android.view.View
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.gson.Gson
 import com.qzlin.pastesimple.databinding.MainActivityBinding
 import com.qzlin.pastesimple.helper.Utility
 import com.qzlin.pastesimple.service.ClipBoardMonitor
-import com.qzlin.pastesimple.service.SignalRService
+import com.qzlin.pastesimple.service.SyncService
+import java.lang.Exception
+import java.util.LinkedHashMap
 
 
 class MainActivity : AppCompatActivity() {
     private lateinit var utility: Utility
 
-    //    private lateinit var uiHandler: Handler
     lateinit var binding: MainActivityBinding
-    private lateinit var syncServices: SignalRService
+    private lateinit var syncServices: SyncService
     private var syncServBond = false
 
     private val connection = object : ServiceConnection {
-
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
             // We've bound to LocalService, cast the IBinder and get LocalService instance
-            val binder = service as SignalRService.LocalBinder
+            val binder = service as SyncService.LocalBinder
             syncServices = binder.getService()
             syncServBond = true
 
@@ -36,12 +36,22 @@ class MainActivity : AppCompatActivity() {
                 val receivedText = syncServices.server?.receivedList?.poll()
                 if (receivedText.isNullOrEmpty())
                     return@onReceive
-                val p = Regex("(.*?):((?:.|\n|\r)*)")
-                val r = p.matchEntire(receivedText) ?: return@onReceive
-                val command = r.groups[1]!!.value
-                val content = r.groups[2]?.value ?: ""
-                Log.i("test", "Parse:$command/$content")
-                if (content.isEmpty())
+//                val p = Regex("(.*?):((?:.|\n|\r)*)")
+//                val r = p.matchEntire(receivedText) ?: return@onReceive
+                val gson = Gson()
+                val data: MutableMap<String, String>
+                try {
+                    data = gson.fromJson<LinkedHashMap<String, String>>(
+                        receivedText,
+                        LinkedHashMap::class.java
+                    )
+                } catch (e: Exception) {
+                    Log.e("test", "GSON", e)
+                    return@onReceive
+                }
+                val command = data["command"]
+                val content = data["content"] ?: ""
+                if (content.isEmpty() || command != "SYNC")
                     return@onReceive
 
                 val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
@@ -55,6 +65,7 @@ class MainActivity : AppCompatActivity() {
             syncServices.updateStatusLabel = Runnable {
                 binding.textConnectStatus.text = syncServices.statusText
             }
+            updateStatus()
         }
 
         override fun onServiceDisconnected(arg0: ComponentName) {
@@ -64,6 +75,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun getViewStrID(v: View): String {
         return resources.getResourceEntryName(v.id)
+    }
+
+    private fun updateStatus() {
+        if (syncServBond)
+            binding.textConnectStatus.text = syncServices.statusText
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,7 +108,8 @@ class MainActivity : AppCompatActivity() {
 
 
         binding.startServicesButton.setOnClickListener {
-            if (binding.serverAddressEditText.text.isNotEmpty() && binding.serverPortEditText.text.isNotEmpty() && binding.uidEditeText.text.isNotEmpty()
+            if (binding.serverAddressEditText.text.isNotEmpty() && binding.serverPortEditText.text.isNotEmpty()
+                && binding.uidEditeText.text.isNotEmpty()
             ) {
                 saveTextData(binding.serverAddressEditText)
                 saveTextData(binding.serverPortEditText)
@@ -104,7 +121,7 @@ class MainActivity : AppCompatActivity() {
                 val clientUid = binding.uidEditeText.text.toString().toInt()
 
                 val syncServIntent =
-                    Intent(applicationContext, SignalRService::class.java).also { intent ->
+                    Intent(applicationContext, SyncService::class.java).also { intent ->
                         bindService(intent, connection, Context.BIND_AUTO_CREATE)
                     }
                 syncServIntent.action = Global.START_SERVICE
@@ -139,37 +156,11 @@ class MainActivity : AppCompatActivity() {
         }
         binding.logoutServicesButton.setOnClickListener { logout() }
 
-//        receiveConnectionStatus()
         binding.startServicesButton.performClick()
     }
 
-    /*lateinit var updateUIReceiver: BroadcastReceiver
-    private fun receiveConnectionStatus() {
-        val filter = IntentFilter()
-        filter.addAction(Global.STATUS_UPDATE_ACTION)
-
-        updateUIReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                binding.textConnectStatus.text = intent?.getStringExtra("text") ?: ""
-            }
-        }
-        registerReceiver(updateUIReceiver, filter)
-    }*/
-
-    /*private fun isServiceRunning(classgetName: String?): Boolean {
-        val manager = (getSystemService(ACTIVITY_SERVICE) as ActivityManager)
-        for (service in manager.getRunningServices(Int.MAX_VALUE)) {
-            Log.e(tag, service.service.className)
-            Log.e(tag, "ClassName" + service.service.className)
-            if (classgetName == service.service.className) {
-                return true
-            }
-        }
-        return false
-    }*/
-
     private fun stopSyncServices() {
-        val signalRServiceIntent = Intent(applicationContext, SignalRService::class.java)
+        val signalRServiceIntent = Intent(applicationContext, SyncService::class.java)
         stopService(signalRServiceIntent)
 
         stopService(Intent(applicationContext, ClipBoardMonitor::class.java))
@@ -186,8 +177,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         stopSyncServices()
-        unbindService(connection)
-        syncServBond = false
         super.onDestroy()
     }
 

@@ -10,7 +10,6 @@ import android.text.TextUtils
 import android.util.Log
 import com.qzlin.pastesimple.Global
 import com.qzlin.pastesimple.helper.Utility
-import com.qzlin.pastesimple.service.SignalRService.LocalBinder
 import java.io.*
 import java.util.*
 
@@ -25,25 +24,26 @@ import java.util.*
  */
 class ClipBoardMonitor : Service() {
     private lateinit var utility: Utility
-    private lateinit var mHistoryFile: File
+
+    //    private lateinit var mHistoryFile: File
     private lateinit var mClipboardManager: ClipboardManager
 
     //    private val mThreadPool = Executors.newSingleThreadExecutor()
     private var serviceBond = false
 
-    private lateinit var syncService: SignalRService
+    private lateinit var syncService: SyncService
     private val connection: ServiceConnection = object : ServiceConnection {
 
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
-            val binder = service as SignalRService.LocalBinder
+            val binder = service as SyncService.LocalBinder
             syncService = binder.getService()
             serviceBond = true
-            Log.i(TAG, "bound status - $serviceBond")
+            Log.i("test", "bound status - $serviceBond")
         }
 
         override fun onServiceDisconnected(arg0: ComponentName?) {
             serviceBond = false
-            Log.i(TAG, "bound disconnected - status - $serviceBond")
+            Log.i("test", "bound disconnected - status - $serviceBond")
         }
     }
 
@@ -51,7 +51,7 @@ class ClipBoardMonitor : Service() {
         super.onCreate()
         // TODO: Show an ongoing notification when this service is running.
         utility = Utility(applicationContext)
-        mHistoryFile = File(getExternalFilesDir(null), FILENAME)
+//        mHistoryFile = File(getExternalFilesDir(null), FILENAME)
         mClipboardManager = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         mClipboardManager.addPrimaryClipChangedListener(
             mOnPrimaryClipChangedListener
@@ -59,7 +59,7 @@ class ClipBoardMonitor : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val mIntent = Intent(this, SignalRService::class.java)
+        val mIntent = Intent(this, SyncService::class.java)
         bindService(mIntent, connection, BIND_AUTO_CREATE)
         return super.onStartCommand(intent, flags, startId)
     }
@@ -74,9 +74,10 @@ class ClipBoardMonitor : Service() {
         if (serviceBond) {
             unbindService(connection)
             serviceBond = false
-            Log.i(TAG, "bound disconnecting - status - $serviceBond")
+            Log.i("test", "bound disconnecting - status - $serviceBond")
         }
     }
+
     inner class LocalBinder : Binder() {
         // Return this instance of LocalService so clients can call public methods
         fun getService(): ClipBoardMonitor = this@ClipBoardMonitor
@@ -94,11 +95,12 @@ class ClipBoardMonitor : Service() {
 
     private val mOnPrimaryClipChangedListener: OnPrimaryClipChangedListener =
         OnPrimaryClipChangedListener {
-            Log.d(TAG, "onPrimaryClipChanged")
+            Log.d("test", "onPrimaryClipChanged")
             if (!mClipboardManager.hasPrimaryClip()) {
-                Log.e(TAG, "no Primary Clip")
+                Log.e("test", "no Primary Clip")
             } else if (!mClipboardManager.primaryClipDescription?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)!!
             ) {
+                //TODO
                 assert(true)
                 /*
                         // since the clipboard has data but it is not plain text
@@ -123,12 +125,11 @@ class ClipBoardMonitor : Service() {
                 Log.i("test", "clip_update:$copiedContent")
                 if (Global.lastSetClip == null || Global.lastSetClip?.description?.label != clipData?.description?.label) {
                     syncService.sendCopiedText(copiedContent)
-//                    Global.lastSetClip = clipData
                 }
             }
         }
 
-    private inner class WriteHistoryRunnable(text: CharSequence?) : Runnable {
+    /*private inner class WriteHistoryRunnable(text: CharSequence?) : Runnable {
         private val mNow: Date?
         private val mTextToWrite: CharSequence?
         override fun run() {
@@ -168,5 +169,6 @@ class ClipBoardMonitor : Service() {
         private val TAG = ClipBoardMonitor::class.java.simpleName
         private val FILENAME: String = "clipboard-history.txt"
         private const val NOTIFICATION_ID = 777
-    }
+
+}*/
 }

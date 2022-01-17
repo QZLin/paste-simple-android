@@ -9,6 +9,7 @@ object Global {
 
     //    val copied_water_mark = "- Copied By ClipSync"
     const val STOP_SERVICE = "STOP_SERVICE"
+    const val INIT_SERVICE = "STOP_SERVICE"
     const val START_SERVICE = "START_SERVICE"
     const val SIGNALR_SERVICE_NOTIFICATION_ID = 1001
 
